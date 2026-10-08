@@ -1,0 +1,25 @@
+UN Sustainable Development Goal 12: Responsible Consumption and Production
+
+Small regenerative cattle farms struggle to capture the full economic value of the animals they raise. Regenerative farms tend to be family-owned, small operations using regenerative techniques to restore and maintain the nutrient density of pasture soil. Small farms are extremely financially vulnerable. Small family farms make up 88% of all U.S. farms but account for only 19% of the total value of production. In 2022, between 52% and 79% of small family farms were considered at high financial risk (USDA ERS).
+
+For grass-fed cattle producers, this financial vulnerability is only worsened by the structure of the beef market. Although 100% grass-fed beef can make farmers more money, steaks make up only about 10% of a carcass. According to SARE, a rancher selling 50lbs of tenderloin to a restaurant would need to find customers for the ~1,000 pounds of hamburger generated alongside it. Unsold cuts can enter the conventional market, but farmers must accept much lower prices for those cutes.
+
+It's estimated that 75–80% of U.S. grass-fed beef sales by value come from imports. “Trump’s proclamation will remove tariffs from 300,000 metric tons of imported lean beef trimmings for 90 days. He said the countries supplying the beef would sell it at 25 percent below current market prices…” (Politico). Most grass-fed producers are too small to access large, efficient processing plants and have to rely on equally small processors that charge $400–$800 per animal. Specialty distributors can then add another 12–25% or more in markup. As a result, even when consumers pay roughly a 70% premium for grass-fed beef, producers may receive only a 25–30% premium themselves (Back to Grass).
+
+Currently, about 19% of grass-fed cattle are sold directly to consumers, which allows farmers to make more profit, but that requires direct marketing, more money, and more resources. Government programs such as the USDA's Meat and Poultry Processing Expansion Program have also invested in expanding local processing capacity. Increasing processing capacity, though, does not find profitable buyers for all parts of an animal.
+
+This doesn’t just affect individual ranchers. Well-managed grazing systems can regenerate grassland, build soil, and protect watersheds, while concentrated feedlot systems can create air and water pollution. For regenerative cattle farming to persist as a sustainable form of agricultural production, the farmers practicing it must first be able to make the economics of raising and selling the entire animal work. 
+
+### References
+
+Cheung, R., McMahon, P., Norell, E., Kissel, R., & Benz, D. (2017). *Back to grass: The market potential for U.S. grassfed beef*. Stone Barns Center for Food & Agriculture. https://www.stonebarnscenter.org/wp-content/uploads/2017/10/Grassfed_Full_v2.pdf
+
+Politico. (2026, August 26). *Trump signs controversial beef import plan despite ranchers’ backlash*. https://www.politico.com/news/2026/08/26/trump-signs-controversial-beef-import-plan-despite-ranchers-backlash-01051730
+
+Sustainable Agriculture Research and Education. (n.d.). *Selling the whole carcass*. https://www.sare.org/publications/how-to-direct-market-your-beef/finding-a-niche/selling-the-whole-carcass/
+
+U.S. Department of Agriculture, Economic Research Service. (2024). *Small family farms were more likely to have greater financial vulnerability than other farms in 2022*. https://www.ers.usda.gov/data-products/charts-of-note/108317
+
+U.S. Department of Agriculture, Rural Development. (n.d.). *Meat and Poultry Processing Expansion Program—Phase 4*. https://www.rd.usda.gov/programs-services/business-programs/meat-and-poultry-processing-expansion-program-phase-4
+
+United Nations. (n.d.). *Goal 12: Ensure sustainable consumption and production patterns*. https://sdgs.un.org/goals/goal12
