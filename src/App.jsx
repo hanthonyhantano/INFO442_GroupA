@@ -1,4 +1,4 @@
-import { Routes, Route } from 'react-router-dom'
+import { Routes, Route, Navigate } from 'react-router-dom'
 import ShopperLayout from './components/ShopperLayout'
 import ProducerLayout from './components/ProducerLayout'
 import Home from './pages/Home'
@@ -40,6 +40,7 @@ export default function App() {
         <Route path="/apply" element={<Apply />} />
       </Route>
       <Route path="/producer" element={<ProducerLayout />}>
+        <Route index element={<Navigate to="today" replace />} />
         <Route path="today" element={<Today />} />
         <Route path="orders" element={<Orders />} />
         <Route path="inventory" element={<Inventory />} />
