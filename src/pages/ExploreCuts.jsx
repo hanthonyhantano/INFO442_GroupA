@@ -1,36 +1,36 @@
-import { useEffect, useState } from 'react'
-import { Link } from 'react-router-dom'
-import { cuts } from '../discovery/cuts'
-import CowDiagram from '../discovery/CowDiagram'
-import { CatalogState } from '../discovery/Content'
-import { useCatalog } from '../discovery/useCatalog'
-import { useNavigation } from '../navigation/useNavigation'
+import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import { cuts } from "../discovery/cuts";
+import CowDiagram from "../discovery/CowDiagram";
+import { CatalogState } from "../discovery/Content";
+import { useCatalog } from "../discovery/useCatalog";
+import { useNavigation } from "../navigation/useNavigation";
 function StockItem({ cut }) {
-  const { quantities, addPackage } = useNavigation()
-  const [message, setMessage] = useState('')
+  const { quantities, addPackage } = useNavigation();
+  const [message, setMessage] = useState("");
   useEffect(() => {
-    if (!message) return
-    const timer = setTimeout(() => setMessage(''), 2000)
-    return () => clearTimeout(timer)
-  }, [message])
+    if (!message) return;
+    const timer = setTimeout(() => setMessage(""), 2000);
+    return () => clearTimeout(timer);
+  }, [message]);
   function add() {
     if ((quantities[cut.id] ?? 0) >= cut.available_packages) {
-      setMessage('All available packages are already in your cart')
-      return
+      setMessage("All available packages are already in your cart");
+      return;
     }
-    addPackage(cut.id, cut.available_packages)
-    setMessage('Added ✓')
+    addPackage(cut.id, cut.available_packages);
+    setMessage("Added ✓");
   }
   return (
     <li>
       <div>
-        <Link to={'/shop/' + cut.id}>{cut.name}</Link>
+        <Link to={"/shop/" + cut.id}>{cut.name}</Link>
         <small>
           {cut.farm.name} · ${Number(cut.price_per_lb).toFixed(2)}/lb
         </small>
       </div>
       {cut.available_packages != null && (
-        <button onClick={add}>{message === 'Added ✓' ? message : 'Add'}</button>
+        <button onClick={add}>{message === "Added ✓" ? message : "Add"}</button>
       )}
       {message && (
         <span className="dc-feedback" role="status">
@@ -38,15 +38,15 @@ function StockItem({ cut }) {
         </span>
       )}
     </li>
-  )
+  );
 }
 export default function ExploreCuts() {
-  const [part, setPart] = useState('Chuck')
-  const catalog = useCatalog()
+  const [part, setPart] = useState("Chuck");
+  const catalog = useCatalog();
   const items = (catalog.data?.items ?? [])
     .filter((p) => String(p.cut_category).toLowerCase() === part.toLowerCase())
-    .sort((a, b) => a.price_per_lb - b.price_per_lb)
-  const [description, ...methods] = cuts[part]
+    .sort((a, b) => a.price_per_lb - b.price_per_lb);
+  const [description, ...methods] = cuts[part];
   return (
     <article className="dc dc-explorer">
       <header>
@@ -84,5 +84,5 @@ export default function ExploreCuts() {
         </section>
       </div>
     </article>
-  )
+  );
 }

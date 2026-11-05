@@ -1,19 +1,19 @@
-import { Link } from 'react-router-dom'
-import { preview } from './catalog'
-import './discovery.css'
+import { Link } from "react-router-dom";
+import { preview } from "./catalog";
+import "./discovery.css";
 export function CatalogState({ catalog, children }) {
   if (catalog.error)
     return (
       <p role="alert">
         Something went wrong. <button onClick={catalog.retry}>Try again</button>
       </p>
-    )
+    );
   if (!catalog.data)
     return (
       <p className="dc-loading" role="status">
         Loading listings…
       </p>
-    )
+    );
   return (
     <>
       {preview && (
@@ -21,16 +21,16 @@ export function CatalogState({ catalog, children }) {
       )}
       {children}
     </>
-  )
+  );
 }
 export function CutCard({ cut, featured }) {
   return (
-    <Link className="dc-card" to={'/shop/' + cut.id}>
+    <Link className="dc-card" to={"/shop/" + cut.id}>
       <div className="dc-photo">
         {cut.photo_url ? (
           <img src={cut.photo_url} alt="" />
         ) : (
-          'Photo unavailable'
+          "Photo unavailable"
         )}
         {featured && <b>Farmer’s pick</b>}
       </div>
@@ -41,10 +41,10 @@ export function CutCard({ cut, featured }) {
         <p>
           {[
             cut.cooking_tag,
-            cut.approx_weight_lb && '≈ ' + cut.approx_weight_lb + ' lb pkg',
+            cut.approx_weight_lb && "≈ " + cut.approx_weight_lb + " lb pkg",
           ]
             .filter(Boolean)
-            .join(' · ')}
+            .join(" · ")}
         </p>
         {cut.available_packages != null && (
           <p>{cut.available_packages} packages available</p>
@@ -52,23 +52,23 @@ export function CutCard({ cut, featured }) {
         <span>View cut →</span>
       </div>
     </Link>
-  )
+  );
 }
 export function Principles() {
   return (
     <div className="dc-three">
       {[
         [
-          'Regenerative grazing',
-          'Moving cattle between pastures gives plants time to recover. Their roots hold soil in place and absorb water.',
+          "Regenerative grazing",
+          "Moving cattle between pastures gives plants time to recover. Their roots hold soil in place and absorb water.",
         ],
         [
-          'Whole-animal use',
-          'Steaks make up only about 10% of the animal. Choosing a roast, shank, or brisket helps a ranch sell the rest of its harvest.',
+          "Whole-animal use",
+          "Steaks make up only about 10% of the animal. Choosing a roast, shank, or brisket helps a ranch sell the rest of its harvest.",
         ],
         [
-          'A shorter supply chain',
-          'Distributors take a share of the price you pay. Buying directly connects your food dollars with the people who raised your beef.',
+          "A shorter supply chain",
+          "Distributors take a share of the price you pay. Buying directly connects your food dollars with the people who raised your beef.",
         ],
       ].map(([title, text]) => (
         <section key={title}>
@@ -77,5 +77,5 @@ export function Principles() {
         </section>
       ))}
     </div>
-  )
+  );
 }

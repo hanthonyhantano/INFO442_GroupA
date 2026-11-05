@@ -1,10 +1,11 @@
-import { Link } from 'react-router-dom'
-import logo from '../assets/navigation/catcow.png'
-import pasture from '../assets/discovery/pasture.jpg'
-import { useCatalog } from '../discovery/useCatalog'
-import { Principles, CatalogState, CutCard } from '../discovery/Content'
+import { Link } from "react-router-dom";
+import logo from "../assets/navigation/catcow.png";
+import artwork from "../assets/discovery/home-art.png";
+import "./home.css";
+import { useCatalog } from "../discovery/useCatalog";
+import { Principles, CatalogState, CutCard } from "../discovery/Content";
 export default function Home() {
-  const catalog = useCatalog()
+  const catalog = useCatalog();
   return (
     <article className="dc dc-home">
       <header className="dc-split">
@@ -25,15 +26,11 @@ export default function Home() {
           </div>
           <p className="dc-tagline">From their pasture to your kitchen.</p>
         </div>
-        <div
-          className="dc-art"
-          style={{
-            backgroundImage:
-              'linear-gradient(#406fa899,#406fa899), url(' + pasture + ')',
-          }}
-        >
-          <img src={logo} alt="Cat Cow" />
-        </div>
+        <img
+          className="home-art"
+          src={artwork}
+          alt="Cat Cow illustrated over a blue pasture"
+        />
       </header>
       <section>
         <small>Underrated cuts</small>
@@ -51,7 +48,7 @@ export default function Home() {
             </div>
           ) : (
             <p>
-              No farmer’s picks near you right now.{' '}
+              No farmer’s picks near you right now.{" "}
               <Link to="/farms">Explore farms</Link>
             </p>
           )}
@@ -74,14 +71,16 @@ export default function Home() {
               <Link
                 className="dc-card dc-body"
                 key={f.id}
-                to={'/farms/' + f.id}
+                to={"/farms/" + f.id}
               >
-                {f.photo_url && <img src={f.photo_url} alt="" />}
+                <div className="home-farm-photo">
+                  {f.photo_url && <img src={f.photo_url} alt="" />}
+                </div>
                 <small>{f.town}</small>
                 <h3>{f.name}</h3>
                 <p>{f.description}</p>
                 {f.operator && <p>{f.operator}</p>}
-                {f.tags?.join(' · ')}
+                {f.tags?.join(" · ")}
                 <p>Visit farm →</p>
               </Link>
             ))}
@@ -94,6 +93,32 @@ export default function Home() {
         <Principles />
         <Link to="/mission">Our mission →</Link>
       </section>
+      <footer className="home-footer">
+        <div>
+          <img src={logo} alt="Cat Cow" />
+          <p>Stretch the cow. More for the farmer.</p>
+        </div>
+        <div>
+          <small>Shop</small>
+          <Link to="/shop">All cuts</Link>
+          <Link to="/explore">Explore the cow</Link>
+          <Link to="/cart">Cart</Link>
+        </div>
+        <div>
+          <small>Mission</small>
+          <Link to="/mission">Whole-animal use</Link>
+          <Link to="/mission">Regenerative grazing</Link>
+        </div>
+        <div>
+          <small>Producers</small>
+          <Link to="/producer">Producer dashboard</Link>
+          <Link to="/producers">Sell with Cat Cow</Link>
+        </div>
+        <div>
+          <small>Contact</small>
+          <p>Seattle, WA</p>
+        </div>
+      </footer>
     </article>
-  )
+  );
 }

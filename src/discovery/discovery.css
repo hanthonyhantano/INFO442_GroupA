@@ -30,7 +30,7 @@
 }
 .dc small {
   font:
-    500 0.75rem/1.5 'IBM Plex Mono',
+    500 0.75rem/1.5 "IBM Plex Mono",
     monospace;
   letter-spacing: 0.06em;
   text-transform: uppercase;
@@ -234,7 +234,7 @@
   border-radius: 20px;
   background: #efefed;
 }
-.dc-tabs button[aria-pressed='true'] {
+.dc-tabs button[aria-pressed="true"] {
   background: #e4edfa;
   color: #004cb6;
 }

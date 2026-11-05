@@ -1,6 +1,6 @@
-import { Link } from 'react-router-dom'
-import pasture from '../assets/discovery/pasture.jpg'
-import { Principles } from '../discovery/Content'
+import { Link } from "react-router-dom";
+import pasture from "../assets/discovery/pasture.jpg";
+import { Principles } from "../discovery/Content";
 export default function Mission() {
   return (
     <article className="dc">
@@ -22,9 +22,9 @@ export default function Mission() {
       <Principles />
       <section className="dc-band">
         <h2>Ready to meet the people behind your beef?</h2>
-        <Link to="/farms">Meet the farms →</Link>{' '}
+        <Link to="/farms">Meet the farms →</Link>{" "}
         <Link to="/shop">Shop beef →</Link>
       </section>
     </article>
-  )
+  );
 }
