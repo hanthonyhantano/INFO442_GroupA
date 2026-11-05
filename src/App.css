@@ -182,3 +182,816 @@
     border-right-color: var(--border);
   }
 }
+
+/* Farms */
+.farms-layout {
+  display: grid;
+  grid-template-columns: minmax(380px, 44%) minmax(0, 1fr);
+  height: calc(100vh - var(--site-header-height));
+  min-height: 540px;
+}
+
+.farms-panel {
+  padding: 28px 28px 32px;
+  overflow-y: auto;
+}
+
+.farms-panel__title {
+  font-size: 28px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  line-height: 1.15;
+}
+
+.farms-panel__count {
+  margin-top: 8px;
+  min-height: 16px;
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+
+.farms-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.farms-bar {
+  display: block;
+  height: 10px;
+  border-radius: var(--radius-pill);
+  background: #ebebe9;
+}
+
+/* ---------- Filters ---------- */
+.farms-filters {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.farms-filters__chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.farms-chip {
+  font: inherit;
+  font-size: 11px;
+  font-weight: 500;
+  padding: 5px 10px;
+  border: 0;
+  border-radius: var(--radius-pill);
+  background: #eeeeec;
+  color: #555;
+  cursor: pointer;
+}
+
+.farms-chip.is-active {
+  background: var(--blue-100);
+  color: var(--blue-700);
+}
+
+.farms-sort {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--ink-soft);
+  white-space: nowrap;
+}
+
+.farms-sort select {
+  font: inherit;
+  color: var(--ink);
+  background: transparent;
+  border: 0;
+  padding: 2px 0;
+  cursor: pointer;
+}
+
+/* ---------- Farm list ---------- */
+.farms-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.farms-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  min-height: 104px;
+  padding: 12px 18px 12px 12px;
+  font: inherit;
+  text-align: left;
+  color: inherit;
+  text-decoration: none;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+
+.farms-row:hover {
+  border-color: #cfcfcb;
+}
+
+.farms-row.is-selected {
+  background: var(--blue-50);
+  border: 1.5px solid var(--blue-700);
+}
+
+.farms-row--loading,
+.farms-row--loading:hover {
+  cursor: default;
+  border-color: var(--line);
+}
+
+.farms-row__thumb {
+  flex: none;
+  width: 100px;
+  height: 80px;
+  object-fit: cover;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+}
+
+.farms-row__text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.farms-row__name {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.farms-row__location {
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--ink-soft);
+}
+
+.farms-row__skeleton {
+  display: block;
+  height: 6px;
+  margin-top: 10px;
+  border-radius: var(--radius-pill);
+  background: #ebebe9;
+}
+
+.farms-row__distance {
+  align-self: flex-start;
+  margin-top: 6px;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.farms-row__chevron {
+  font-size: 14px;
+  color: var(--ink-soft);
+}
+
+/* ---------- Empty and error states ---------- */
+.farms-state {
+  margin-top: 20px;
+  padding: 24px 20px;
+  border: 1px dashed #cfcfcb;
+  border-radius: var(--radius-md);
+}
+
+.farms-state__title {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.farms-state__text {
+  margin-top: 6px;
+  max-width: 44ch;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--ink-soft);
+}
+
+.farms-state__action {
+  margin-top: 14px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 8px 14px;
+  color: var(--blue-700);
+  background: var(--surface);
+  border: 1px solid var(--blue-700);
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+}
+
+/* ---------- Map ---------- */
+.farms-map {
+  position: relative;
+  overflow: hidden;
+  border-left: 1px solid var(--line);
+}
+
+.farms-map__surface {
+  position: absolute;
+  inset: 0;
+}
+
+.farms-map__error {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+}
+
+.farms-map__error-box {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 16px 20px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--ink-soft);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+}
+
+.farms-map__error-box strong {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.farms-outline {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  border: 1.5px dashed var(--blue-700);
+  border-radius: 28%;
+  background: rgba(29, 74, 168, 0.05);
+  pointer-events: none;
+}
+
+.farms-marker {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+  padding: 5px 12px;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid #cfcfcb;
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+}
+
+.farms-marker:hover,
+.farms-marker.is-highlighted {
+  z-index: 1;
+  color: var(--blue-700);
+  border-color: var(--blue-700);
+}
+
+.farms-marker.is-selected {
+  z-index: 2;
+  color: #fff;
+  background: var(--blue-700);
+  border-color: var(--blue-700);
+}
+
+/* ---------- Mobile Map / List switch ---------- */
+.farms-viewswitch {
+  display: none;
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 5;
+  padding: 3px;
+  background: var(--blue-900);
+  border-radius: var(--radius-pill);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
+}
+
+.farms-viewswitch button {
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 8px 18px;
+  color: #fff;
+  background: transparent;
+  border: 0;
+  border-radius: var(--radius-pill);
+  opacity: 0.75;
+  cursor: pointer;
+}
+
+.farms-viewswitch button[aria-pressed="true"] {
+  color: var(--blue-900);
+  background: #fff;
+  opacity: 1;
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 900px) {
+  .farms-layout {
+    grid-template-columns: 1fr;
+    height: auto;
+  }
+
+  .farms-layout--list .farms-map {
+    display: none;
+  }
+
+  .farms-layout--map .farms-panel {
+    display: none;
+  }
+
+  .farms-layout--map .farms-map {
+    height: calc(100vh - var(--site-header-height));
+    border-left: 0;
+  }
+
+  .farms-viewswitch {
+    display: flex;
+  }
+}
+
+/* Farm */
+.farm-page {
+  --blue-900: #12275c;
+  --blue-700: #1d4aa8;
+  --blue-100: #e6ecfa;
+  --blue-50: #f3f5fb;
+  --ink: #1a1a1a;
+  --ink-soft: #6b6b6b;
+  --line: #e4e4e1;
+  --surface: #ffffff;
+  --placeholder: #efefed;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-pill: 999px;
+  --container: 1085px;
+  --gutter: 24px;
+  --site-header-height: 64px; 
+
+  font-family: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  color: var(--ink);
+  background: var(--surface);
+  text-align: left;
+  -webkit-font-smoothing: antialiased;
+  margin: -2rem;   
+}
+
+.farm-page *,
+.farm-page *::before,
+.farm-page *::after {
+  box-sizing: border-box;
+}
+
+.farm-page h1,
+.farm-page h2,
+.farm-page h3,
+.farm-page p,
+.farm-page ul {
+  margin: 0;
+  padding: 0;
+}
+
+.farm-page ul {
+  list-style: none;
+}
+
+.farm-page a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.farm-page :focus-visible {
+  outline: 2px solid var(--blue-700);
+  outline-offset: 2px;
+}
+
+/* ---------- Shared helpers ---------- */
+.farm-placeholder {
+  background-color: var(--placeholder);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100%25' height='100%25'%3E%3Cline x1='0' y1='0' x2='100%25' y2='100%25' stroke='%23dcdcd8' stroke-width='1'/%3E%3Cline x1='100%25' y1='0' x2='0' y2='100%25' stroke='%23dcdcd8' stroke-width='1'/%3E%3C/svg%3E");
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+}
+
+.farm-bar {
+  display: block;
+  height: 10px;
+  border-radius: var(--radius-pill);
+  background: #ebebe9;
+}
+
+.farm-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+.farm-container {
+  max-width: none;
+  margin: 0;
+  padding: 0 56px;
+}
+
+/* ---------- Hero ---------- */
+.farm-hero {
+  display: grid;
+  height: 260px;
+}
+
+.farm-hero > * {
+  grid-area: 1 / 1;          /* image and link share the same cell */
+}
+
+.farm-hero__image {
+  width: 100%;
+  height: 260px;
+}
+
+.farm-back-link {
+  align-self: start;
+  justify-self: start;
+  margin: 18px 0 0 56px;     /* matches .farm-container side padding */
+  z-index: 1;
+  display: inline-block;
+  background: var(--surface);
+  font-size: 10px;
+  padding: 4px 8px;
+  border-radius: var(--radius-pill);
+}
+
+/* ---------- Layout ---------- */
+.farm-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 340px;
+  gap: 48px;
+  align-items: start;
+  padding-top: 16px;
+  padding-bottom: 64px;
+}
+
+.farm-side {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 14px;
+}
+
+/* ---------- Intro ---------- */
+.farm-intro {
+  display: flex;
+  align-items: flex-end;
+  gap: 24px;
+  margin-top: -48px;
+  position: relative;
+  z-index: 2;
+}
+
+.farm-intro__avatar {
+  flex: none;
+  width: 88px;
+  height: 88px;
+  object-fit: cover;
+  background: #d6d6d3;
+  border: 3px solid var(--surface);
+  border-radius: 10px;
+  box-shadow: 0 0 0 1px var(--line);
+}
+
+.farm-intro__text {
+  padding-bottom: 2px;
+}
+
+.farm-intro__name {
+  font-size: 28px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  line-height: 1.15;
+}
+
+.farm-intro__meta {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+
+/* ---------- Tags ---------- */
+.farm-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 20px;
+}
+
+.farm-tag {
+  font-size: 10px;
+  font-weight: 500;
+  padding: 5px 8px;
+  border-radius: var(--radius-pill);
+}
+
+.farm-tag--blue {
+  background: var(--blue-100);
+  color: var(--blue-700);
+}
+
+.farm-tag--gray {
+  background: #eeeeec;
+  color: #555;
+}
+
+/* ---------- Description ---------- */
+.farm-description {
+  max-width: 62ch;
+  margin-top: 20px;
+  font-size: 14px;
+  line-height: 1.6;
+  color: #333;
+}
+
+.farm-skeleton-text {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 20px;
+}
+
+.farm-skeleton-text span {
+  display: block;
+  height: 6px;
+  border-radius: var(--radius-pill);
+  background: #ebebe9;
+}
+
+/* ---------- Gallery ---------- */
+.farm-gallery {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 24px;
+  margin-bottom: 32px;
+}
+
+.farm-gallery__item {
+  width: 100%;
+  aspect-ratio: 183 / 73;
+  object-fit: cover;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+}
+
+/* ---------- In stock ---------- */
+.farm-stock {
+  margin-top: 32px;
+}
+
+.farm-stock__header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.farm-stock__title {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.farm-stock__link {
+  font-size: 11px;
+  color: var(--ink-soft);
+}
+
+.farm-stock__link:hover {
+  color: var(--blue-700);
+}
+
+.farm-stock__grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.farm-stock__empty {
+  margin-top: 16px;
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+
+.farm-product {
+  display: block;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--surface);
+}
+
+.farm-product:hover {
+  border-color: #cfcfcb;
+}
+
+.farm-product__image {
+  height: auto;
+  width: 100%;
+  aspect-ratio: 183 / 84;
+}
+
+.farm-product__body {
+  padding: 10px 11px 12px;
+}
+
+.farm-product__name {
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.farm-product__meta {
+  margin-top: 5px;
+  font-size: 10px;
+  color: var(--ink-soft);
+}
+
+/* ---------- Sidebar cards ---------- */
+.farm-card {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: 16px;
+}
+
+.farm-card__title {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.farm-card--delivery {
+  background: var(--blue-50);
+  border: 1.5px solid var(--blue-700);
+  padding: 16px 16px 14px;
+}
+
+.farm-delivery__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.farm-delivery__dot {
+  width: 9px;
+  height: 9px;
+  border: 1.5px solid var(--ink);
+  border-radius: 50%;
+}
+
+.farm-delivery__meta {
+  margin-top: 14px;
+  font-size: 10px;
+  color: var(--ink-soft);
+}
+
+.farm-card--delivery-none {
+  background: var(--surface);
+  border: 1px solid var(--line);
+}
+
+.farm-pickup {
+  margin-top: 12px;
+}
+
+/* .farm-pickup__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-top: 1px solid var(--line);
+  font-size: 10px;
+} */
+
+.farm-pickup__item {
+  align-items: flex-start;
+}
+
+.farm-pickup__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.farm-pickup__name {
+  font-weight: 500;
+}
+
+.farm-pickup__detail {
+  color: var(--ink-soft);
+}
+
+.farm-pickup__thumb {
+  flex: none;
+  width: 26px;
+  height: 26px;
+  object-fit: cover;
+  border-radius: 4px;
+}
+
+.farm-contact__line {
+  margin-top: 8px;
+  font-size: 10px;
+  color: var(--ink-soft);
+}
+
+.farm-contact__line a:hover {
+  color: var(--blue-700);
+}
+
+/* ---------- Not found / error ---------- */
+.farm-notice {
+  padding-top: 24px;
+  padding-bottom: 64px;
+}
+
+.farm-notice__title {
+  margin-top: 28px;
+  font-size: 24px;
+  font-weight: 500;
+}
+
+.farm-notice__text {
+  margin-top: 8px;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+.farm-notice__action {
+  margin-top: 16px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 8px 14px;
+  color: var(--blue-700);
+  background: var(--surface);
+  border: 1px solid var(--blue-700);
+  border-radius: var(--radius-pill);
+  cursor: pointer;
+}
+
+main {
+  min-width: 0;
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 960px) {
+  .farm-layout {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+
+  .farm-side {
+    padding-top: 0;
+  }
+
+  .farm-stock__grid,
+  .farm-gallery {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 560px) {
+  .farm-intro {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .farm-hero {
+    height: 140px;
+  }
+}

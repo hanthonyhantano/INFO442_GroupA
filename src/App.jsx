@@ -20,6 +20,7 @@ import Inventory from './pages/producer/Inventory'
 import Batches from './pages/producer/Batches'
 import Import from './pages/producer/Import'
 import FarmProfile from './pages/producer/FarmProfile'
+import './App.css'
 
 export default function App() {
   return (
@@ -30,7 +31,7 @@ export default function App() {
         <Route path="/shop/:cutId" element={<ProductPage />} />
         <Route path="/explore" element={<ExploreCuts />} />
         <Route path="/farms" element={<Farms />} />
-        <Route path="/farms/:slug" element={<FarmPage />} />
+        <Route path="/farms/:farmId" element={<FarmPage />} />
         <Route path="/cart" element={<Cart />} />
         <Route path="/checkout" element={<Checkout />} />
         <Route path="/request-sent" element={<RequestSent />} />
