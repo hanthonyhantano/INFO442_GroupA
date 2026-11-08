@@ -6,6 +6,7 @@ import {
 } from './inventory'
 import EditPanel from './EditPanel'
 import './inventory.css'
+import CowDiagram from '../discovery/CowDiagram'
 
 function toDraft(cut) {
   return {
@@ -110,6 +111,9 @@ export default function InventoryPage() {
     setDraft((current) => ({ ...current, [field]: value }))
     setErrors((current) => ({ ...current, [field]: undefined }))
   }
+    function togglePart(name) {
+    setPart((current) => (current === name ? null : name))
+  }
   function step(delta) {
     const current = Number(draft.onHand)
     const base = Number.isInteger(current) ? current : 0
@@ -187,22 +191,27 @@ export default function InventoryPage() {
 
         <section className="inv-animal" aria-label="Inventory across the animal">
           <h2>Inventory across the animal</h2>
-          <ul>
-            {bars.map(({ part: name, onHand }) => (
-              <li key={name}>
-                <button
-                  type="button"
-                  className={part === name ? 'inv-bar-row is-selected' : 'inv-bar-row'}
-                  aria-pressed={part === name}
-                  onClick={() => setPart(part === name ? null : name)}
-                >
-                  <span className="inv-bar-label">{name}</span>
-                  <span className="inv-bar"><span style={{ width: (onHand / maxOnHand) * 100 + '%' }} /></span>
-                  <span className="inv-bar-count">{onHand}</span>
-                </button>
-              </li>
-            ))}
-          </ul>
+          <div className="inv-animal-body">
+            <div className="inv-cow">
+              <CowDiagram selected={part} onSelect={togglePart} />
+            </div>
+            <ul>
+              {bars.map(({ part: name, onHand }) => (
+                <li key={name}>
+                  <button
+                    type="button"
+                    className={part === name ? 'inv-bar-row is-selected' : 'inv-bar-row'}
+                    aria-pressed={part === name}
+                    onClick={() => togglePart(name)}
+                  >
+                    <span className="inv-bar-label">{name}</span>
+                    <span className="inv-bar"><span style={{ width: (onHand / maxOnHand) * 100 + '%' }} /></span>
+                    <span className="inv-bar-count">{onHand}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </div>
         </section>
 
         {groups.length === 0 ? (
