@@ -1,3 +1,5 @@
+import InventoryPage from '../../inventory/InventoryPage'
+
 export default function Inventory() {
-  return <h1>Inventory</h1>
+  return <InventoryPage />
 }
