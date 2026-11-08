@@ -55,3 +55,18 @@ export async function fetchInventory() {
     cuts: cutsResult.data.map((row) => toCut(row, held.get(row.id) ?? 0)),
   }
 }
+/** Save the editable fields of one cut. */
+export async function saveCut(id, values) {
+  const { error } = await supabase
+    .from('cuts')
+    .update({
+      description: values.description,
+      price_per_pound: Number(values.pricePerPound),
+      pounds_per_package: Number(values.poundsPerPackage),
+      packages_on_hand: Number(values.onHand),
+      is_live: values.isLive,
+      is_featured: values.isFeatured,
+    })
+    .eq('id', id)
+  if (error) throw error
+}
