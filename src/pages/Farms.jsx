@@ -282,9 +282,6 @@ const deliverCount = results.filter((farm) => deliversTo(farm, zip)).length;
           <div className="farm-placeholder farms-map__surface" />
         )}
       </section>
-              
-
-        {/* Mobile Toggle */}
 
         <div
           className="farms-viewswitch"

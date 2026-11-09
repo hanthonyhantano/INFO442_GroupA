@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useNavigation } from "../navigation/useNavigation";
+import { PRODUCTS } from "../lib/products";
 
   const FARMS = [
   {
@@ -71,23 +72,22 @@ import { useNavigation } from "../navigation/useNavigation";
   },
 ];
 
-const PRODUCTS = [
-  { id: 1, farmId: 2, name: "Ground Beef", pricePerLb: 9.5, lbsPerPackage: 2.5, photoUrl: null, availablePackages: 12 },
-  { id: 2, farmId: 2, name: "Ribeye Steak", pricePerLb: 19.5, lbsPerPackage: 1, photoUrl: null, availablePackages: 0 },
-  { id: 3, farmId: 1, name: "Chuck Roast", pricePerLb: 12.5, lbsPerPackage: 3, photoUrl: null, availablePackages: 5 },
-  { id: 4, farmId: 1, name: "Short Ribs", pricePerLb: 11.99, lbsPerPackage: 2, photoUrl: null, availablePackages: 8 },
-];
+// const PRODUCTS = [
+//   { id: 1, farmId: 2, name: "Ground Beef", pricePerLb: 9.5, lbsPerPackage: 2.5, photoUrl: null, availablePackages: 12 },
+//   { id: 2, farmId: 2, name: "Ribeye Steak", pricePerLb: 19.5, lbsPerPackage: 1, photoUrl: null, availablePackages: 0 },
+//   { id: 3, farmId: 1, name: "Chuck Roast", pricePerLb: 12.5, lbsPerPackage: 3, photoUrl: null, availablePackages: 5 },
+//   { id: 4, farmId: 1, name: "Short Ribs", pricePerLb: 11.99, lbsPerPackage: 2, photoUrl: null, availablePackages: 8 },
+// ];
 
 function fetchFarm(id) {
   return new Promise((resolve) =>
     setTimeout(() => {
       const farm = FARMS.find((f) => f.id === id) ?? null;
-      resolve({ farm, products: farm ? PRODUCTS.filter((p) => p.farmId === farm.id) : [] });
+      resolve({ farm, products: farm ? PRODUCTS.filter((p) => p.farm.id === farm.id) : [] });
     }, 300)
   );
 }
 
-// ---- Component ----
 export default function FarmPage() {
   const { zip } = useNavigation(); 
   const { farmId } = useParams();
@@ -238,7 +238,7 @@ export default function FarmPage() {
                       <div className="farm-product__body">
                         <div className="farm-product__name">{p.name}</div>
                         <div className="farm-product__meta">
-                          ${p.pricePerLb.toFixed(2)}/lb · ≈ {p.lbsPerPackage} lb
+                          ${p.pricePerLb.toFixed(2)}/lb · ≈ {p.defaultSize} lb
                         </div>
                       </div>
                     </Link>
