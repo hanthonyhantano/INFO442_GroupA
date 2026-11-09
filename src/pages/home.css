@@ -4,7 +4,7 @@
 .dc.dc-home {
   max-width: none;
   padding: 0;
-  background: #f8f6ed;
+  background: #f8f6ee;
   color: #143665;
 }
 .dc-home .dc-split {
@@ -38,7 +38,7 @@
   aspect-ratio: 1;
   border-radius: 4%;
 }
-.dc-home > section {
+.dc.dc-home > section {
   margin: 0;
   padding: clamp(54px, 6.6vw, 96px) 3.9vw;
 }
@@ -62,7 +62,7 @@
   max-width: 440px;
 }
 .dc-home .dc-band a {
-  background: #f8f6ed;
+  background: #f8f6ee;
   color: #164995;
 }
 .dc-home .dc-three {
@@ -86,23 +86,36 @@
   height: 100%;
   object-fit: cover;
 }
-.dc-home > section:last-of-type {
+.dc-home .home-mission {
   background: #143665;
   color: white;
   display: grid;
   grid-template-columns: 1fr 1fr;
-  column-gap: 5vw;
-  align-content: center;
-  min-height: 48vw;
+  gap: 48px 5vw;
+  align-items: start;
 }
-.dc-home > section:last-of-type .dc-three {
-  grid-column: 2;
-  grid-row: 1 / span 3;
+.home-mission-copy {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 22px;
+}
+.dc-home .home-mission-copy > * {
+  margin: 0;
+}
+.dc-home .home-mission .dc-three {
   display: block;
   margin: 0;
 }
-.dc-home > section:last-of-type h2 {
-  align-self: start;
+.dc-home .home-explorer {
+  display: grid;
+  grid-template-columns: 1fr 1.3fr;
+  gap: 32px;
+  align-items: center;
+}
+.home-explorer .dc-diagram {
+  color: #202020;
+  min-width: 0;
 }
 .home-footer {
   background: #084bb3;
@@ -121,10 +134,12 @@
   display: block;
   color: inherit;
   margin-top: 8px;
+  text-decoration: none;
 }
 @media (max-width: 700px) {
   .dc-home .dc-split,
-  .dc-home > section:last-of-type {
+  .dc-home .home-mission,
+  .dc-home .home-explorer {
     display: block;
   }
   .home-art {
@@ -135,5 +150,12 @@
   }
   .dc-home .dc-split p {
     font-size: 17px;
+  }
+}
+
+@media (max-width: 700px) {
+  .home-explorer .dc-diagram,
+  .dc-home .home-mission .dc-three {
+    margin-top: 32px;
   }
 }

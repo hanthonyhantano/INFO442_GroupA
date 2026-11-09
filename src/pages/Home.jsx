@@ -1,3 +1,6 @@
+import { useState } from "react";
+import CowDiagram from "../discovery/CowDiagram";
+import { cuts } from "../discovery/cuts";
 import { Link } from "react-router-dom";
 import logo from "../assets/navigation/catcow.png";
 import artwork from "../assets/discovery/home-art.png";
@@ -6,6 +9,7 @@ import { useCatalog } from "../discovery/useCatalog";
 import { Principles, CatalogState, CutCard } from "../discovery/Content";
 export default function Home() {
   const catalog = useCatalog();
+  const [part, setPart] = useState("Chuck");
   return (
     <article className="dc dc-home">
       <header className="dc-split">
@@ -54,13 +58,22 @@ export default function Home() {
           )}
         </CatalogState>
       </section>
-      <section className="dc-band">
-        <small>The cow explorer</small>
-        <h2>Pick a part of the cow.</h2>
-        <p>
-          Learn where a cut comes from, how to cook it, and who has it in stock.
-        </p>
-        <Link to="/explore">Open the explorer →</Link>
+      <section className="dc-band home-explorer">
+        <div>
+          <small>The cow explorer</small>
+          <h2>Pick a part of the cow.</h2>
+          <p>
+            Learn where a cut comes from, how to cook it, and who has it in
+            stock.
+          </p>
+          <p aria-live="polite">
+            <strong>{part}</strong> · {cuts[part].slice(1).join(" · ")}
+          </p>
+          <Link to={"/explore?part=" + encodeURIComponent(part)}>
+            Open the explorer →
+          </Link>
+        </div>
+        <CowDiagram selected={part} onSelect={setPart} />
       </section>
       <section>
         <small>Meet the farmers</small>
@@ -87,11 +100,13 @@ export default function Home() {
           </div>
         </CatalogState>
       </section>
-      <section>
-        <small>Our mission</small>
-        <h2>Make the whole cow valuable.</h2>
+      <section className="home-mission">
+        <div className="home-mission-copy">
+          <small>Our mission</small>
+          <h2>Make the whole cow valuable.</h2>
+          <Link to="/mission">Our mission →</Link>
+        </div>
         <Principles />
-        <Link to="/mission">Our mission →</Link>
       </section>
       <footer className="home-footer">
         <div>
