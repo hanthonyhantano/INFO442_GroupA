@@ -24,7 +24,7 @@ function toCut(row, held) {
   }
 }
 
-/** All of the farm's cuts, each with its batch code, part name and held packages. */
+/** The farm's cuts (with held packages), plus the parts and batches the Add cut form needs. */
 export async function fetchInventory() {
   const { data: farm, error: farmError } = await supabase
     .from('farms')
@@ -32,9 +32,9 @@ export async function fetchInventory() {
     .eq('slug', DEMO_FARM_SLUG)
     .maybeSingle()
   if (farmError) throw farmError
-  if (!farm) return { farmId: null, cuts: [] }
+  if (!farm) return { farmId: null, cuts: [], parts: [], batches: [] }
 
-  const [cutsResult, heldResult] = await Promise.all([
+  const [cutsResult, heldResult, partsResult, batchesResult] = await Promise.all([
     supabase.from('cuts').select(CUT_COLUMNS).eq('farm_id', farm.id).order('id'),
     // Held = packages in orders that are still New.
     supabase
@@ -42,9 +42,12 @@ export async function fetchInventory() {
       .select('cut_id, quantity, orders!inner(status, farm_id)')
       .eq('orders.status', 'new')
       .eq('orders.farm_id', farm.id),
+    supabase.from('cow_parts').select('id, name').order('id'),
+    supabase.from('batches').select('id, batch_code, animal').eq('farm_id', farm.id).order('id'),
   ])
-  if (cutsResult.error) throw cutsResult.error
-  if (heldResult.error) throw heldResult.error
+  for (const result of [cutsResult, heldResult, partsResult, batchesResult]) {
+    if (result.error) throw result.error
+  }
 
   const held = new Map()
   for (const item of heldResult.data) {
@@ -53,8 +56,11 @@ export async function fetchInventory() {
   return {
     farmId: farm.id,
     cuts: cutsResult.data.map((row) => toCut(row, held.get(row.id) ?? 0)),
+    parts: partsResult.data,
+    batches: batchesResult.data.map((batch) => ({ id: batch.id, label: batch.batch_code + ' · ' + batch.animal })),
   }
 }
+
 /** Save the editable fields of one cut. */
 export async function saveCut(id, values) {
   const { error } = await supabase
@@ -69,4 +75,26 @@ export async function saveCut(id, values) {
     })
     .eq('id', id)
   if (error) throw error
+}
+
+/** Create a cut. Throws an error with code '23505' if the name already exists in that batch. */
+export async function createCut(farmId, values) {
+  const { data, error } = await supabase
+    .from('cuts')
+    .insert({
+      farm_id: farmId,
+      batch_id: Number(values.batchId),
+      cow_part_id: Number(values.partId),
+      name: values.name.trim(),
+      description: values.description,
+      price_per_pound: Number(values.pricePerPound),
+      pounds_per_package: Number(values.poundsPerPackage),
+      packages_on_hand: Number(values.onHand),
+      is_live: values.isLive,
+      is_featured: values.isFeatured,
+    })
+    .select(CUT_COLUMNS)
+    .single()
+  if (error) throw error
+  return toCut(data, 0)
 }

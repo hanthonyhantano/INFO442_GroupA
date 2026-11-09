@@ -66,3 +66,7 @@
   .inv-animal-body { grid-template-columns: 1fr; }
   .inv-layout.has-panel { grid-template-columns: minmax(0, 1fr); }
 }
+
+.inv-toolbar .inv-button { background: #fff; font: inherit; cursor: pointer; }
+.inv-button.primary { background: #1c1c1c; border-color: #1c1c1c; color: #fff; }
+.inv-panel .inv-text, .inv-panel select { width: 100%; box-sizing: border-box; padding: 8px; border: 1px solid #ccc; border-radius: 8px; font: inherit; background: #fff; }
