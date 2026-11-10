@@ -1,0 +1,308 @@
+.dc {
+  max-width: 1440px;
+  margin: 0 auto;
+  color: #163965;
+  font:
+    16px/1.55 Inter,
+    system-ui,
+    sans-serif;
+  padding: 1rem clamp(0px, 2vw, 32px) 3rem;
+}
+.dc h1,
+.dc h2,
+.dc h3 {
+  line-height: 1.08;
+  margin: 0.45em 0;
+}
+.dc h1 {
+  font-size: clamp(36px, 5vw, 76px);
+  letter-spacing: -0.045em;
+}
+.dc h2 {
+  font-size: clamp(27px, 3vw, 48px);
+  letter-spacing: -0.03em;
+}
+.dc h3 {
+  font-size: 1.3rem;
+}
+.dc p {
+  max-width: 65ch;
+}
+.dc small {
+  font:
+    500 0.75rem/1.5 "IBM Plex Mono",
+    monospace;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.dc-home > section,
+.dc-band,
+.dc-three {
+  margin-block: clamp(28px, 5vw, 72px);
+}
+.dc-split,
+.dc-explore-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: center;
+  gap: clamp(24px, 5vw, 80px);
+}
+.dc-art,
+.dc-pasture {
+  width: 100%;
+  aspect-ratio: 1.14;
+  object-fit: cover;
+  background-position: center;
+  background-size: cover;
+  border-radius: 14px;
+}
+.dc-art {
+  display: grid;
+  place-items: center;
+}
+.dc-art img {
+  width: 65%;
+  filter: brightness(0) invert(1);
+}
+.dc-actions,
+.dc-heading,
+.dc-tags,
+.dc-tabs {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.dc-actions a,
+.dc-band a {
+  border: 1px solid currentColor;
+  border-radius: 99px;
+  padding: 0.65rem 1rem;
+  text-decoration: none;
+  display: inline-block;
+}
+.dc-actions a:first-child {
+  background: #14396a;
+  color: white;
+}
+.dc-tagline {
+  margin-top: 2rem;
+  border-top: 1px solid #cad7e6;
+  padding-top: 1rem;
+}
+.dc-heading {
+  justify-content: space-between;
+}
+.dc-band {
+  padding: clamp(24px, 5vw, 72px);
+  background: #154d9b;
+  color: white;
+  border-radius: 12px;
+}
+.dc-three,
+.dc-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+}
+.dc-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.dc-three > section,
+.dc-body {
+  padding: 20px;
+}
+.dc-three > section {
+  border-top: 1px solid #b7c6d7;
+}
+.dc-card {
+  display: block;
+  text-decoration: none;
+  border: 1px solid #d5e0ee;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #fff;
+}
+.dc-card:hover {
+  border-color: #294b75;
+}
+.dc-photo {
+  position: relative;
+  aspect-ratio: 1.6;
+  background: #f1f2ee;
+  color: #586558;
+  display: grid;
+  place-items: center;
+  font-size: 0.84rem;
+}
+.dc-photo img,
+.dc-body > img {
+  width: 100%;
+  object-fit: cover;
+}
+.dc-photo img {
+  height: 100%;
+  position: absolute;
+}
+.dc-photo b {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  background: #fff;
+  padding: 4px 10px;
+  border-radius: 12px;
+}
+.dc-card span,
+.dc-stock a {
+  text-decoration: underline;
+}
+.dc-preview,
+.dc-stock small {
+  display: block;
+  color: #606a71;
+  margin: 12px 0;
+}
+.dc-explorer {
+  color: #202020;
+}
+.dc-explorer header {
+  text-align: center;
+}
+.dc-explorer header p {
+  margin: 0 auto 24px;
+}
+.dc-explorer h1 {
+  font-size: clamp(30px, 4vw, 42px);
+}
+.dc-explore-grid {
+  grid-template-columns: minmax(0, 1.85fr) minmax(0, 1fr);
+  gap: 32px;
+  align-items: start;
+}
+.dc-diagram {
+  background: #fafaf9;
+  border-radius: 12px;
+  padding: clamp(12px, 2vw, 24px);
+}
+.dc-cow {
+  position: relative;
+  aspect-ratio: 812/538;
+}
+.dc-cow > img {
+  position: absolute;
+  width: 99%;
+  height: 98%;
+  left: 0.5%;
+  top: 1%;
+}
+.dc-regions {
+  position: absolute;
+  inset: 0;
+  mask-size: 98.5% 97.2%;
+  mask-position: center;
+  mask-repeat: no-repeat;
+}
+.dc-regions svg {
+  width: 100%;
+  height: 100%;
+}
+.dc-regions path {
+  fill-opacity: 0.06;
+  cursor: pointer;
+}
+.dc-regions path:hover {
+  fill: #555;
+  fill-opacity: 1;
+}
+.dc-cow > span {
+  position: absolute;
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  font: clamp(8px, 1vw, 14px) monospace;
+  text-transform: uppercase;
+}
+.dc-tabs {
+  justify-content: center;
+  margin-top: 16px;
+  gap: 6px;
+}
+.dc-tabs button,
+.dc-tags span,
+.dc-stock button {
+  border: 0;
+  padding: 6px 10px;
+  border-radius: 20px;
+  background: #efefed;
+}
+.dc-tabs button[aria-pressed="true"] {
+  background: #e4edfa;
+  color: #004cb6;
+}
+.dc-tags span {
+  font-size: 0.82rem;
+}
+.dc-stock {
+  padding: 0;
+  list-style: none;
+}
+.dc-stock li {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  border: 1px solid #ddd;
+  padding: 12px;
+  border-radius: 8px;
+  margin-bottom: 8px;
+}
+.dc-feedback {
+  flex-basis: 100%;
+}
+.dc-loading {
+  background: #f2f2f0;
+  padding: 20px;
+}
+@media (max-width: 960px) {
+  .dc-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+@media (max-width: 700px) {
+  .dc-split,
+  .dc-grid,
+  .dc-three,
+  .dc-explore-grid {
+    grid-template-columns: 1fr;
+  }
+  .dc-art,
+  .dc-pasture {
+    aspect-ratio: 1.7;
+  }
+  .dc-cow > span {
+    font-size: 9px;
+  }
+}
+
+/* Keep the explorer background continuous up to the navigation. */
+.navigation-main:has(> .dc-explorer) {
+  padding-top: 0;
+}
+.dc-explorer {
+  padding-top: 24px;
+}
+.dc-explorer header h1 {
+  margin-top: 0;
+}
+.dc-mission .dc-split {
+  gap: 32px;
+}
+.dc-mission .dc-pasture {
+  height: clamp(220px, 38svh, 360px);
+  aspect-ratio: auto;
+}
+.dc-mission h1 {
+  font-size: clamp(36px, 4vw, 56px);
+}
+.dc-mission > .dc-three {
+  margin-block: 32px;
+}

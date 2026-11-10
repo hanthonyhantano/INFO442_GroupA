@@ -19,7 +19,7 @@ function ZipConsumer() { const { zip } = useNavigation(); return <output aria-la
 describe('shopper navigation', () => {
   it('links to each existing destination and marks only the selected section', async () => {
     const user = userEvent.setup(); mount()
-    for (const [label, heading] of [['Shop','Shop'], ['Explore Cuts','ExploreCuts'], ['Farms','Farms'], ['Our Mission','Mission'], ['For Producers','ForProducers']]) {
+    for (const [label, heading] of [['Shop','Shop beef'], ['Explore Cuts','Pick a part of the cow.'], ['Farms',/^Farms/], ['Our Mission','Make the whole cow valuable.'], ['For Producers','ForProducers']]) {
       await user.click(screen.getByRole('link', { name: label, exact: true }))
       expect(screen.getByRole('heading', { name: heading })).toBeTruthy()
       expect(screen.getByRole('link', { name: label, exact: true }).getAttribute('aria-current')).toBe('page')
@@ -28,7 +28,7 @@ describe('shopper navigation', () => {
     expect(screen.getByRole('heading', { name: 'Cart' })).toBeTruthy()
     expect(screen.getByRole('link', { name: 'Shop', exact: true }).className).toBe('active')
     await user.click(screen.getByRole('link', { name: 'Cat Cow home' }))
-    expect(screen.getByRole('heading', { name: 'Home' })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: /Good beef/ })).toBeTruthy()
   })
   it.each([['/shop/example','Shop'], ['/farms/example','Farms']])('keeps parent active at %s', (path, label) => {
     mount(path); expect(screen.getByRole('link', { name: label, exact: true }).getAttribute('aria-current')).toBe('page')

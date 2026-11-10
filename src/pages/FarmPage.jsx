@@ -3,15 +3,22 @@ import { useParams, Link } from "react-router-dom";
 import { useNavigation } from "../navigation/useNavigation";
 import { PRODUCTS } from "../lib/products";
 
+// images
+import farm1 from "../assets/farm/farm1.jpg";
+import farm2 from "../assets/farm/farm2.jpg";
+import farm3 from "../assets/farm/farm3.jpg";
+import farm4 from "../assets/farm/farm4.jpg";
+import farm7 from "../assets/farm/farm7.jpg";
+
   const FARMS = [
   {
     id: 1,
     name: "Lorem Ranch",
+    coverUrl: farm7,
     town: "Ellensburg, WA",
     owners: "Lorem & Ipsum Dolor",
     founded: 2014,
-    coverUrl: null,
-    logoUrl: null,
+    logoUrl: farm1,
     story: "Lorem Ranch is a family-owned ranch focused on rotational grazing and responsibly raised livestock.",
     tags: ["Rotational grazing", "Grass-finished"],
     photos: [],
@@ -26,11 +33,11 @@ import { PRODUCTS } from "../lib/products";
     
     id: 2,
     name: "Dolor Farm",
+    coverUrl: farm7,
     town: "Enumclaw, WA",
     owners: "Jane & Tom Dolor",
     founded: 2018,
-    coverUrl: null,
-    logoUrl: null,
+    logoUrl: farm2,
     story: "Dolor Farm specializes in pasture-raised beef and direct-to-consumer sales.",
     tags: ["Grass-fed", "Pasture Raised"],
     photos: [],
@@ -43,11 +50,11 @@ import { PRODUCTS } from "../lib/products";
   {
     id: 3,
     name: "Ipsum Grazing",
+    coverUrl: farm7,
     town: "Walla Walla, WA",
     owners: "",
     founded: null,
-    coverUrl: null,
-    logoUrl: null,
+    logoUrl: farm3,
     story: "Ipsum Grazing raises grass-finished cattle in southeastern Washington.",
     tags: ["Grass-finished"],
     photos: [],
@@ -58,11 +65,11 @@ import { PRODUCTS } from "../lib/products";
   {
     id: 4,
     name: "Amet Cattle Co.",
+    coverUrl: farm7,
     town: "Sequim, WA",
     owners: "",
     founded: null,
-    coverUrl: null,
-    logoUrl: null,
+    logoUrl: farm4,
     story: "Amet Cattle Co. delivers locally raised beef across the Olympic Peninsula.",
     tags: [],
     photos: [],

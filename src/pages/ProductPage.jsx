@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useNavigation } from "../navigation/useNavigation";
 import { PRODUCTS } from "../lib/products";
-import CowDiagram from "../components/CowDiagram";
+import CowDiagram from "../discovery/CowDiagram";
  
 const money = (n) => `$${n.toFixed(2)}`;
  
@@ -11,6 +11,9 @@ export default function ProductPage() {
   const { zip } = useNavigation();
  
   const product = PRODUCTS.find((p) => p.id === parseInt(productId, 10));
+  const cut = product?.cut
+  ? product.cut[0].toUpperCase() + product.cut.slice(1)
+  : null;
 
   const related = PRODUCTS.filter((p) => p.id !== product?.id).slice(0, 3);
  
@@ -48,13 +51,16 @@ export default function ProductPage() {
     : "Set your ZIP for delivery";
  
   const handleAddToCart = () => {
-    // TODO: connect to your cart
+    // TODO: connect to cart
     console.log("add to cart", { productId: product.id, size, qty });
   };
  
   return (
     <div className="product-page">
       <div className="product-container">
+        <Link to="/shop" className="product-back-link">
+          <span aria-hidden="true">←</span> To Shop
+        </Link>
         {/* TOP: image + summary */}
         <section className="product-top">
           <div
@@ -105,18 +111,15 @@ export default function ProductPage() {
         {/* PANELS */}
         <section className="product-panels">
           <div className="product-panel">
-            <h2 className="product-panel__title">Where on the cow</h2>
-            <div className="product-cow">
-              <CowDiagram
-                selected={product.cut ?? null}
-                interactive={false}
-                showButtons={false}
-                showLabels={false}
-              />
-            </div>
-            <p className="product-panel__caption">{product.cowCaption}</p>
+          <h2 className="product-panel__title">Where on the cow</h2>
+          <div className="product-cow">
+            <CowDiagram
+              selected={product.cut ?? null}
+              onSelect={() => {}}
+            />
           </div>
- 
+          <p className="product-panel__caption">{product.cowCaption}</p>
+        </div>
           <div className="product-panel">
             <div className="product-panel__header">
               <h2 className="product-panel__title">Cook it</h2>
