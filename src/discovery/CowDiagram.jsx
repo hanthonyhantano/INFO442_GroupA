@@ -30,7 +30,14 @@ const labels = [
   [70, 55],
   [32, 90],
 ];
-export default function CowDiagram({ selected, onSelect }) {
+
+export default function CowDiagram({
+  selected,
+  onSelect,
+  interactive = true,
+  showButtons = true,
+  showLabels = true,
+}) {
   const selectedIds = regionsInOrder.flatMap((part, i) =>
     part === selected
       ? [".dc-regions #" + (i === 0 ? "Vector" : "Vector_" + (i + 1))]

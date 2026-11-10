@@ -1,16 +1,24 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useNavigation } from "../navigation/useNavigation";
+import { PRODUCTS } from "../lib/products";
+
+// images
+import farm1 from "../assets/farm/farm1.jpg";
+import farm2 from "../assets/farm/farm2.jpg";
+import farm3 from "../assets/farm/farm3.jpg";
+import farm4 from "../assets/farm/farm4.jpg";
+import farm7 from "../assets/farm/farm7.jpg";
 
   const FARMS = [
   {
     id: 1,
     name: "Lorem Ranch",
+    coverUrl: farm7,
     town: "Ellensburg, WA",
     owners: "Lorem & Ipsum Dolor",
     founded: 2014,
-    coverUrl: null,
-    logoUrl: null,
+    logoUrl: farm1,
     story: "Lorem Ranch is a family-owned ranch focused on rotational grazing and responsibly raised livestock.",
     tags: ["Rotational grazing", "Grass-finished"],
     photos: [],
@@ -25,11 +33,11 @@ import { useNavigation } from "../navigation/useNavigation";
     
     id: 2,
     name: "Dolor Farm",
+    coverUrl: farm7,
     town: "Enumclaw, WA",
     owners: "Jane & Tom Dolor",
     founded: 2018,
-    coverUrl: null,
-    logoUrl: null,
+    logoUrl: farm2,
     story: "Dolor Farm specializes in pasture-raised beef and direct-to-consumer sales.",
     tags: ["Grass-fed", "Pasture Raised"],
     photos: [],
@@ -42,11 +50,11 @@ import { useNavigation } from "../navigation/useNavigation";
   {
     id: 3,
     name: "Ipsum Grazing",
+    coverUrl: farm7,
     town: "Walla Walla, WA",
     owners: "",
     founded: null,
-    coverUrl: null,
-    logoUrl: null,
+    logoUrl: farm3,
     story: "Ipsum Grazing raises grass-finished cattle in southeastern Washington.",
     tags: ["Grass-finished"],
     photos: [],
@@ -57,11 +65,11 @@ import { useNavigation } from "../navigation/useNavigation";
   {
     id: 4,
     name: "Amet Cattle Co.",
+    coverUrl: farm7,
     town: "Sequim, WA",
     owners: "",
     founded: null,
-    coverUrl: null,
-    logoUrl: null,
+    logoUrl: farm4,
     story: "Amet Cattle Co. delivers locally raised beef across the Olympic Peninsula.",
     tags: [],
     photos: [],
@@ -71,23 +79,22 @@ import { useNavigation } from "../navigation/useNavigation";
   },
 ];
 
-const PRODUCTS = [
-  { id: 1, farmId: 2, name: "Ground Beef", pricePerLb: 9.5, lbsPerPackage: 2.5, photoUrl: null, availablePackages: 12 },
-  { id: 2, farmId: 2, name: "Ribeye Steak", pricePerLb: 19.5, lbsPerPackage: 1, photoUrl: null, availablePackages: 0 },
-  { id: 3, farmId: 1, name: "Chuck Roast", pricePerLb: 12.5, lbsPerPackage: 3, photoUrl: null, availablePackages: 5 },
-  { id: 4, farmId: 1, name: "Short Ribs", pricePerLb: 11.99, lbsPerPackage: 2, photoUrl: null, availablePackages: 8 },
-];
+// const PRODUCTS = [
+//   { id: 1, farmId: 2, name: "Ground Beef", pricePerLb: 9.5, lbsPerPackage: 2.5, photoUrl: null, availablePackages: 12 },
+//   { id: 2, farmId: 2, name: "Ribeye Steak", pricePerLb: 19.5, lbsPerPackage: 1, photoUrl: null, availablePackages: 0 },
+//   { id: 3, farmId: 1, name: "Chuck Roast", pricePerLb: 12.5, lbsPerPackage: 3, photoUrl: null, availablePackages: 5 },
+//   { id: 4, farmId: 1, name: "Short Ribs", pricePerLb: 11.99, lbsPerPackage: 2, photoUrl: null, availablePackages: 8 },
+// ];
 
 function fetchFarm(id) {
   return new Promise((resolve) =>
     setTimeout(() => {
       const farm = FARMS.find((f) => f.id === id) ?? null;
-      resolve({ farm, products: farm ? PRODUCTS.filter((p) => p.farmId === farm.id) : [] });
+      resolve({ farm, products: farm ? PRODUCTS.filter((p) => p.farm.id === farm.id) : [] });
     }, 300)
   );
 }
 
-// ---- Component ----
 export default function FarmPage() {
   const { zip } = useNavigation(); 
   const { farmId } = useParams();
@@ -238,7 +245,7 @@ export default function FarmPage() {
                       <div className="farm-product__body">
                         <div className="farm-product__name">{p.name}</div>
                         <div className="farm-product__meta">
-                          ${p.pricePerLb.toFixed(2)}/lb · ≈ {p.lbsPerPackage} lb
+                          ${p.pricePerLb.toFixed(2)}/lb · ≈ {p.defaultSize} lb
                         </div>
                       </div>
                     </Link>

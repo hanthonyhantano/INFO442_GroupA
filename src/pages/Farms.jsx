@@ -7,11 +7,17 @@ import {
   useJsApiLoader,
 } from "@react-google-maps/api";
 import { useNavigation } from "../navigation/useNavigation";
+//images
+import farm1 from "../assets/farm/farm1.jpg";
+import farm2 from "../assets/farm/farm2.jpg";
+import farm3 from "../assets/farm/farm3.jpg";
+import farm4 from "../assets/farm/farm4.jpg";
 
 const FARMS = [
   {
     id: 1,
     name: "Lorem Ranch",
+    logoUrl: farm1,
     town: "Ellensburg, WA",
     miles: 108,
     deliveryZips: ["98105", "98101"],
@@ -24,6 +30,7 @@ const FARMS = [
   {
     id: 2,
     name: "Dolor Farm",
+    logoUrl: farm2,
     town: "Enumclaw, WA",
     miles: 42,
     deliveryZips: ["98105", "98101"],
@@ -36,6 +43,7 @@ const FARMS = [
   {
     id: 3,
     name: "Ipsum Grazing",
+    logoUrl: farm3,
     town: "Walla Walla, WA",
     miles: 260,
     deliveryZips: [],
@@ -48,6 +56,7 @@ const FARMS = [
   {
     id: 4,
     name: "Amet Cattle Co.",
+    logoUrl: farm4,
     town: "Sequim, WA",
     miles: 78,
     deliveryZips: ["98105"],
@@ -199,7 +208,11 @@ const deliverCount = results.filter((farm) => deliversTo(farm, zip)).length;
                     onMouseEnter={() => setHoveredId(farm.id)}
                     onMouseLeave={() => setHoveredId(null)}
                   >
-                    <div className="farm-placeholder farms-row__thumb" />
+                    {farm.logoUrl ? (
+                      <img className="farms-row__thumb" src={farm.logoUrl} alt="" />
+                    ) : (
+                      <div className="farm-placeholder farms-row__thumb" />
+                    )}
 
                     <div className="farms-row__text">
                       <span className="farms-row__name">
@@ -282,9 +295,6 @@ const deliverCount = results.filter((farm) => deliversTo(farm, zip)).length;
           <div className="farm-placeholder farms-map__surface" />
         )}
       </section>
-              
-
-        {/* Mobile Toggle */}
 
         <div
           className="farms-viewswitch"
