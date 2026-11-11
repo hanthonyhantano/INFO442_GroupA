@@ -114,7 +114,7 @@ export default function ProductPage() {
           <h2 className="product-panel__title">Where on the cow</h2>
           <div className="product-cow">
             <CowDiagram
-              selected={product.cut ?? null}
+              selected={cut}
               onSelect={() => {}}
             />
           </div>
