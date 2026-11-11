@@ -3,7 +3,6 @@ import { useParams, Link } from "react-router-dom";
 import { useNavigation } from "../navigation/useNavigation";
 import { PRODUCTS } from "../lib/products";
 import { supabase } from "../lib/supabase"; 
-import FarmBatches from '../components/FarmBatches';
 
 // Local images, used when a farm row has no cover_url / logo_url in Supabase.
 import farm1 from "../assets/farm/farm1.jpg";
