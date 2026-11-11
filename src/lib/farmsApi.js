@@ -161,7 +161,7 @@ function toLiveFarm(row) {
     lng: row.longitude,
     deliveryZips: zones.flatMap((z) => z.zip_codes ?? []),
     deliveryRadiusMiles: row.delivery_radius_miles ?? null,
-    pickup: Boolean(row.pickup_enabled),
+    pickup: Boolean(row.pickup_enabled) || (row.pickup_locations ?? []).length > 0,
     tags: row.practices ?? [],
 
     // detail fields

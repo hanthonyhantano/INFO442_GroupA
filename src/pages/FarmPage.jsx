@@ -2,101 +2,102 @@ import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useNavigation } from "../navigation/useNavigation";
 import { PRODUCTS } from "../lib/products";
+import { supabase } from "../lib/supabase"; 
+import FarmBatches from '../components/FarmBatches';
 
-// images
+// Local images, used when a farm row has no cover_url / logo_url in Supabase.
 import farm1 from "../assets/farm/farm1.jpg";
 import farm2 from "../assets/farm/farm2.jpg";
 import farm3 from "../assets/farm/farm3.jpg";
 import farm4 from "../assets/farm/farm4.jpg";
 import farm7 from "../assets/farm/farm7.jpg";
 
-  const FARMS = [
-  {
-    id: 1,
-    name: "Lorem Ranch",
-    coverUrl: farm7,
-    town: "Ellensburg, WA",
-    owners: "Lorem & Ipsum Dolor",
-    founded: 2014,
-    logoUrl: farm1,
-    story: "Lorem Ranch is a family-owned ranch focused on rotational grazing and responsibly raised livestock.",
-    tags: ["Rotational grazing", "Grass-finished"],
-    photos: [],
-    delivery: { zips: ["98105", "98101"], nextDate: "Tue, Oct 21", fee: "$15", minimum: "$75" },
-    pickups: [
-      { id: "p1", name: "Farm Stand", address: "1 Ranch Rd, Ellensburg, WA", days: "Sat", times: "9–12" },
-      { id: "p2", name: "Ellensburg Farmers Market", address: "400 N Pearl St, Ellensburg, WA", days: "Sat", times: "9–1" },
-    ],
-    contact: { email: "lorem@ranch.com", phone: "(509) 555-0100" },
-  },
-  {
-    
-    id: 2,
-    name: "Dolor Farm",
-    coverUrl: farm7,
-    town: "Enumclaw, WA",
-    owners: "Jane & Tom Dolor",
-    founded: 2018,
-    logoUrl: farm2,
-    story: "Dolor Farm specializes in pasture-raised beef and direct-to-consumer sales.",
-    tags: ["Grass-fed", "Pasture Raised"],
-    photos: [],
-    delivery: { zips: ["98105", "98101"], nextDate: "Wed, Oct 22", fee: "$12", minimum: "$50" },
-    pickups: [
-      { id: "p1", name: "Enumclaw Pickup", address: "123 Main St, Enumclaw, WA", days: "Sat", times: "8–11" },
-    ],
-    contact: { email: "hello@dolorfarm.com", phone: "(206) 555-0199" },
-  },
-  {
-    id: 3,
-    name: "Ipsum Grazing",
-    coverUrl: farm7,
-    town: "Walla Walla, WA",
-    owners: "",
-    founded: null,
-    logoUrl: farm3,
-    story: "Ipsum Grazing raises grass-finished cattle in southeastern Washington.",
-    tags: ["Grass-finished"],
-    photos: [],
-    delivery: { zips: [], nextDate: "", fee: "", minimum: "" },
-    pickups: [],
-    contact: { email: "hi@ipsumgrazing.com", phone: "(509) 555-0123" },
-  },
-  {
-    id: 4,
-    name: "Amet Cattle Co.",
-    coverUrl: farm7,
-    town: "Sequim, WA",
-    owners: "",
-    founded: null,
-    logoUrl: farm4,
-    story: "Amet Cattle Co. delivers locally raised beef across the Olympic Peninsula.",
-    tags: [],
-    photos: [],
-    delivery: { zips: ["98105"], nextDate: "Thu, Oct 23", fee: "$10", minimum: "$40" },
-    pickups: [],
-    contact: { email: "info@ametcattle.com", phone: "(360) 555-0188" },
-  },
-];
+const DEFAULT_COVER = farm7;
+const LOCAL_LOGOS = { 1: farm1, 2: farm2, 3: farm3, 4: farm4 }; 
 
-// const PRODUCTS = [
-//   { id: 1, farmId: 2, name: "Ground Beef", pricePerLb: 9.5, lbsPerPackage: 2.5, photoUrl: null, availablePackages: 12 },
-//   { id: 2, farmId: 2, name: "Ribeye Steak", pricePerLb: 19.5, lbsPerPackage: 1, photoUrl: null, availablePackages: 0 },
-//   { id: 3, farmId: 1, name: "Chuck Roast", pricePerLb: 12.5, lbsPerPackage: 3, photoUrl: null, availablePackages: 5 },
-//   { id: 4, farmId: 1, name: "Short Ribs", pricePerLb: 11.99, lbsPerPackage: 2, photoUrl: null, availablePackages: 8 },
-// ];
+// 0 = Sun, 1 = Mon, 2 = Tue, 3 = Wed, 4 = Thu, 5 = Fri, 6 = Sat
+function getNextDeliveryDate(weekdays, from = new Date()) {
+  if (!weekdays || weekdays.length === 0) return null;
+  for (let offset = 1; offset <= 7; offset++) {
+    const d = new Date(from);
+    d.setHours(0, 0, 0, 0);
+    d.setDate(d.getDate() + offset);
+    if (weekdays.includes(d.getDay())) return d;
+  }
+  return null;
+}
 
-function fetchFarm(id) {
-  return new Promise((resolve) =>
-    setTimeout(() => {
-      const farm = FARMS.find((f) => f.id === id) ?? null;
-      resolve({ farm, products: farm ? PRODUCTS.filter((p) => p.farm.id === farm.id) : [] });
-    }, 300)
-  );
+// Turns day names from pickup_locations.days (["Sat"], ["Saturday"], "sat") into weekday numbers.
+const DAY_INDEX = { sun: 0, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6 };
+function dayNamesToWeekdays(days) {
+  const list = Array.isArray(days) ? days : typeof days === "string" ? days.split(/[,\s]+/) : [];
+  return list
+    .map((d) => DAY_INDEX[String(d).trim().slice(0, 3).toLowerCase()])
+    .filter((n) => n !== undefined);
+}
+
+function formatDeliveryDate(date) {
+  return date.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+}
+
+// Money columns can be numeric (15) or text ("$15") — show both as "$15".
+function formatMoney(value) {
+  if (value === null || value === undefined || value === "") return "";
+  if (typeof value === "number") return `$${Number.isInteger(value) ? value : value.toFixed(2)}`;
+  return value;
+}
+
+function mapFarmRow(row) {
+  return {
+    id: row.id,
+    name: row.name,
+    coverUrl: row.cover_url || DEFAULT_COVER,
+    logoUrl: row.logo_url || LOCAL_LOGOS[row.id] || null,
+    town: row.town ?? "",
+    owners: row.owners ?? "",
+    founded: row.founded ?? null,
+    story: row.story ?? "",
+    tags: row.tags ?? [],
+    photos: row.photos ?? [],
+    delivery: {
+      zips: row.delivery_zips ?? [],
+      weekdays: row.delivery_weekdays ?? [],
+      fee: formatMoney(row.delivery_fee),
+      minimum: formatMoney(row.delivery_minimum),
+    },
+    pickups: (row.pickups ?? []).map((p) => ({
+      id: p.id,
+      name: p.name,
+      address: p.address ?? "",
+      nextDate: getNextDeliveryDate(dayNamesToWeekdays(p.days)),
+      times: p.times ?? "",
+    })),
+    contact: {
+      email: row.contact_email ?? "",
+      phone: row.contact_phone ?? "",
+    },
+  };
+}
+
+async function fetchFarm(id) {
+  if (!Number.isFinite(id)) return { farm: null, products: [] };
+
+  const { data, error } = await supabase
+    .from("farms")
+    .select("*, pickups:pickup_locations(*)")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (error) throw error;
+  if (!data) return { farm: null, products: [] };
+
+  const farm = mapFarmRow(data);
+  const products = PRODUCTS.filter((p) => p.farm.id === farm.id);
+  return { farm, products };
 }
 
 export default function FarmPage() {
-  const { zip } = useNavigation(); 
+  const { zip } = useNavigation();
   const { farmId } = useParams();
   const [state, setState] = useState({ status: "loading", farm: null, products: [] });
   const [attempt, setAttempt] = useState(0);
@@ -168,11 +169,35 @@ export default function FarmPage() {
   }
 
   const { farm, products } = state;
-  const inStock = products.filter((p) => p.availablePackages > 0); 
+  const inStock = products.filter((p) => p.availablePackages > 0);
   const deliversToZip = !!zip && farm.delivery.zips.includes(zip);
+  const hasPickups = farm.pickups.length > 0;
+
+  const nextDelivery = getNextDeliveryDate(farm.delivery.weekdays);
+  const deliveryMeta = [
+    nextDelivery && `Next delivery ${formatDeliveryDate(nextDelivery)}`,
+    farm.delivery.fee,
+    farm.delivery.minimum && `${farm.delivery.minimum} minimum`,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
+  let noDeliveryTitle;
+  let noDeliveryText;
+  if (!zip) {
+    noDeliveryTitle = hasPickups ? "Pickup only" : "Delivery";
+    noDeliveryText = "Set your ZIP to see if this farm delivers to you.";
+  } else if (hasPickups) {
+    noDeliveryTitle = "Pickup only";
+    noDeliveryText = `${farm.name} doesn't deliver to ${zip}. Pickup is available below.`;
+  } else {
+    noDeliveryTitle = "Not available in your area";
+    noDeliveryText = `${farm.name} doesn't deliver to ${zip} and has no pickup locations right now.`;
+  }
+
   const meta = [farm.town, farm.owners, farm.founded && `Since ${farm.founded}`]
     .filter(Boolean)
-    .join(" · "); 
+    .join(" · ");
 
   return (
     <div className="farm-page">
@@ -236,7 +261,7 @@ export default function FarmPage() {
               ) : (
                 <div className="farm-stock__grid">
                   {inStock.map((p) => (
-                    <Link key={p.id} to={`/products/${p.id}`} className="farm-product">
+                    <Link key={p.id} to={`/shop/product/${p.id}`} className="farm-product">
                       {p.photoUrl ? (
                         <img className="farm-product__image" src={p.photoUrl} alt={p.name} />
                       ) : (
@@ -262,32 +287,32 @@ export default function FarmPage() {
                   <span className="farm-delivery__dot" />
                   Delivers to {zip}
                 </div>
-                <div className="farm-delivery__meta">
-                  Next delivery {farm.delivery.nextDate} · {farm.delivery.fee} · {farm.delivery.minimum} minimum
-                </div>
+                {deliveryMeta && <div className="farm-delivery__meta">{deliveryMeta}</div>}
               </div>
             ) : (
               <div className="farm-card farm-card--delivery-none">
-                <div className="farm-card__title">Pickup only</div>
-                <div className="farm-delivery__meta">
-                  {zip
-                    ? `${farm.name} doesn't deliver to ${zip}. Pickup is available below.`
-                    : "Set your ZIP to see if this farm delivers to you."}
-                </div>
+                <div className="farm-card__title">{noDeliveryTitle}</div>
+                <div className="farm-delivery__meta">{noDeliveryText}</div>
               </div>
             )}
 
-            {farm.pickups.length > 0 && (
+            {hasPickups && (
               <div className="farm-card">
                 <div className="farm-card__title">Pickup</div>
                 <div className="farm-pickup">
                   {farm.pickups.map((p) => (
                     <div key={p.id} className="farm-pickup__item">
-                      <div className="farm-placeholder farm-pickup__thumb" />
+                      {/* <div className="farm-placeholder farm-pickup__thumb" />  UNSURE WHAT THIS THUMBNAIL WOULD BE IN THE FIGMA*/} 
                       <div className="farm-pickup__text">
                         <span className="farm-pickup__name">{p.name}</span>
                         <span className="farm-pickup__detail">{p.address}</span>
-                        <span className="farm-pickup__detail">{p.days} · {p.times}</span>
+                        {(p.nextDate || p.times) && (
+                          <span className="farm-pickup__detail">
+                            {[p.nextDate && `Next: ${formatDeliveryDate(p.nextDate)}`, p.times]
+                              .filter(Boolean)
+                              .join(" · ")}
+                          </span>
+                        )}
                       </div>
                     </div>
                   ))}
