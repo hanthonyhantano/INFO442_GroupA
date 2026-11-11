@@ -7,15 +7,27 @@ import {
   useJsApiLoader,
 } from "@react-google-maps/api";
 import { useNavigation } from "../navigation/useNavigation";
-import { fetchFarmList as fetchFarms, fetchZipCenter } from "../lib/farmsApi";
+import { fetchFarmList as fetchFarms, fetchZipCenter, normalizeZip } from "../lib/farmsApi";
 
 const DEFAULT_CENTER = { lat: 47.655, lng: -122.303 };
 const METERS_PER_MILE = 1609.34;
 
-const deliversTo = (farm) =>
-  farm.exactMiles != null &&
-  farm.deliveryRadiusMiles != null &&
-  farm.exactMiles <= farm.deliveryRadiusMiles;
+// A farm delivers to you if your ZIP is in its delivery ZIPs (same rule as the Farm page),
+// or if you're inside its delivery radius.
+const deliversTo = (farm, zip) => {
+  const clean = normalizeZip(zip);
+  if (clean && (farm.deliveryZips ?? []).includes(clean)) return true;
+  return (
+    farm.exactMiles != null &&
+    farm.deliveryRadiusMiles != null &&
+    farm.exactMiles <= farm.deliveryRadiusMiles
+  );
+};
+
+// Farms without usable coordinates get no map pin (avoids pins at NaN).
+const hasCoords = (farm) =>
+  Number.isFinite(Number(farm.lat)) && Number.isFinite(Number(farm.lng)) &&
+  farm.lat !== null && farm.lng !== null;
 
 const FILTERS = [
   { id: "delivers", label: "Delivers to me", test: deliversTo },
@@ -60,7 +72,6 @@ export default function FarmsPage() {
     googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
   });
 
-  // Google reports bad key / billing / referrer problems here, not in loadError
   const [mapAuthFailed, setMapAuthFailed] = useState(false);
 
   useEffect(() => {
@@ -119,7 +130,7 @@ export default function FarmsPage() {
     return () => {
       cancelled = true;
     };
-  }, [zip]);
+  }, [zip, isLoaded]);
 
   const [sort, setSort] = useState("closest");
   const [filters, setFilters] = useState([]);
@@ -133,11 +144,10 @@ export default function FarmsPage() {
     );
   };
 
-  // Add a distance to each farm once we know where the ZIP is
   const farmsWithMiles = useMemo(
     () =>
       data.farms.map((farm) => {
-        const exactMiles = origin
+        const exactMiles = origin && hasCoords(farm)
           ? milesBetween(origin, { lat: Number(farm.lat), lng: Number(farm.lng) })
           : null;
         const valid = Number.isFinite(exactMiles);
@@ -154,7 +164,7 @@ export default function FarmsPage() {
   const results = useMemo(() => {
     const activeFilters = FILTERS.filter((f) => filters.includes(f.id));
     const filtered = farmsWithMiles.filter((farm) =>
-      activeFilters.every((f) => f.test(farm))
+      activeFilters.every((f) => f.test(farm, zip))
     );
 
     return [...filtered].sort((a, b) => {
@@ -168,38 +178,25 @@ export default function FarmsPage() {
       }
       return a.name.localeCompare(b.name);
     });
-  }, [farmsWithMiles, filters, sort]);
+  }, [farmsWithMiles, filters, sort, zip]);
 
-  const deliverCount = results.filter(deliversTo).length;
-  // Remember the last farm hovered, so the circle stays after the mouse leaves
-  const [lastHoveredId, setLastHoveredId] = useState(null);
+  const deliverCount = results.filter((farm) => deliversTo(farm, zip)).length;
+  const hoveredFarm = results.find((farm) => farm.id === hoveredId) || null;
 
-  useEffect(() => {
-    if (hoveredId != null) setLastHoveredId(hoveredId);
-  }, [hoveredId]);
+  const circleFarm = hoveredFarm;
 
-  // The circle is always shown: hovered farm, then last hovered, then the first in the list
-  const circleFarm =
-    results.find((farm) => farm.id === hoveredId) ??
-    results.find((farm) => farm.id === lastHoveredId) ??
-    results[0] ??
-    null;
-  const showCircle = Boolean(circleFarm && circleFarm.deliveryRadiusMiles != null);
-
-  // Starting view: the ZIP, then Seattle. The map then pans to the circle's farm.
   const mapCenter = useMemo(() => origin ?? DEFAULT_CENTER, [origin]);
 
-  // Keep the map instance so we can pan without re-rendering the whole map
   const [map, setMap] = useState(null);
 
-  const circleLat = circleFarm ? Number(circleFarm.lat) : null;
-  const circleLng = circleFarm ? Number(circleFarm.lng) : null;
+  const hoverLat = hoveredFarm ? Number(hoveredFarm.lat) : null;
+  const hoverLng = hoveredFarm ? Number(hoveredFarm.lng) : null;
 
   useEffect(() => {
-    if (!map || circleLat == null || circleLng == null) return;
-    if (!Number.isFinite(circleLat) || !Number.isFinite(circleLng)) return;
-    map.panTo({ lat: circleLat, lng: circleLng });
-  }, [map, circleLat, circleLng]);
+    if (!map || hoverLat == null || hoverLng == null) return;
+    if (!Number.isFinite(hoverLat) || !Number.isFinite(hoverLng)) return;
+    map.panTo({ lat: hoverLat, lng: hoverLng });
+  }, [map, hoverLat, hoverLng]);
 
   return (
     <div className="farm-page">
@@ -344,26 +341,22 @@ export default function FarmsPage() {
               onLoad={setMap}
               onUnmount={() => setMap(null)}
             >
-              {/* One circle that stays mounted and moves between farms, so a
-                  stale copy can't be left behind on the map */}
-              <Circle
-                center={
-                  showCircle
-                    ? { lat: Number(circleFarm.lat), lng: Number(circleFarm.lng) }
-                    : mapCenter
-                }
-                radius={showCircle ? circleFarm.deliveryRadiusMiles * METERS_PER_MILE : 0}
-                options={{
-                  visible: showCircle,
-                  fillColor: "#1d4aa8",
-                  fillOpacity: 0.08,
-                  strokeColor: "#1d4aa8",
-                  strokeWeight: 2,
-                  clickable: false,
-                }}
-              />
+              {circleFarm && hasCoords(circleFarm) && circleFarm.deliveryRadiusMiles != null && (
+                <Circle
+                  key={circleFarm.id}
+                  center={{ lat: Number(circleFarm.lat), lng: Number(circleFarm.lng) }}
+                  radius={circleFarm.deliveryRadiusMiles * METERS_PER_MILE}
+                  options={{
+                    fillColor: "#1d4aa8",
+                    fillOpacity: 0.08,
+                    strokeColor: "#1d4aa8",
+                    strokeWeight: 2,
+                    clickable: false,
+                  }}
+                />
+              )}
 
-              {results.map((farm) => {
+              {results.filter(hasCoords).map((farm) => {
                 const hovered = farm.id === hoveredId;
                 return (
                   <Marker

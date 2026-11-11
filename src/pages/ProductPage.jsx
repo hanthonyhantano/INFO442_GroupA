@@ -3,6 +3,17 @@ import { useParams, Link } from "react-router-dom";
 import { useNavigation } from "../navigation/useNavigation";
 import { PRODUCTS } from "../lib/products";
 import CowDiagram from "../discovery/CowDiagram";
+import { supabase } from "../lib/supabase";
+
+// Local farm logos, used when a farm row has no logo_url in Supabase (same fallback as FarmPage).
+import farm1 from "../assets/farm/farm1.jpg";
+import farm2 from "../assets/farm/farm2.jpg";
+import farm3 from "../assets/farm/farm3.jpg";
+import farm4 from "../assets/farm/farm4.jpg";
+const LOCAL_LOGOS = { 1: farm1, 2: farm2, 3: farm3, 4: farm4 };
+
+// Makes an <img> fill whatever box its class already sizes.
+const fill = { width: "100%", height: "100%", objectFit: "cover", display: "block", borderRadius: "inherit" };
  
 const money = (n) => `$${n.toFixed(2)}`;
  
@@ -20,6 +31,24 @@ export default function ProductPage() {
   const [size, setSize] = useState(product?.defaultSize ?? 2.5);
   const [qty, setQty] = useState(1);
   const [method, setMethod] = useState("Braise");
+  const [farmLogo, setFarmLogo] = useState(null);
+
+  // Farm logo comes from Supabase farms.logo_url, falling back to the local image.
+  useEffect(() => {
+    const farmId = product?.farm?.id;
+    if (!farmId) return;
+    let cancelled = false;
+    setFarmLogo(LOCAL_LOGOS[farmId] ?? null);
+    supabase
+      .from("farms")
+      .select("logo_url")
+      .eq("id", farmId)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!cancelled && data?.logo_url) setFarmLogo(data.logo_url);
+      });
+    return () => { cancelled = true; };
+  }, [product?.farm?.id]);
 
   useEffect(() => {
     setSize(product?.defaultSize ?? 2.5);
@@ -51,7 +80,7 @@ export default function ProductPage() {
     : "Set your ZIP for delivery";
  
   const handleAddToCart = () => {
-    // TODO: connect to cart
+    // NEED to connect to cart.......
     console.log("add to cart", { productId: product.id, size, qty });
   };
  
@@ -63,11 +92,20 @@ export default function ProductPage() {
         </Link>
         {/* TOP: image + summary */}
         <section className="product-top">
-          <div
-            className="product-placeholder product-top__image"
-            role="img"
-            aria-label={product.name}
-          />
+          {product.photoUrl ? (
+            <img
+              className="product-top__image"
+              src={product.photoUrl}
+              alt={product.name}
+              style={{ objectFit: "cover" }}
+            />
+          ) : (
+            <div
+              className="product-placeholder product-top__image"
+              role="img"
+              aria-label={product.name}
+            />
+          )}
  
           <div className="product-summary">
             <div className="product-tags">
@@ -92,7 +130,17 @@ export default function ProductPage() {
             </div>
  
             <div className="product-farm">
-              <div className="product-farm__avatar" aria-hidden="true" />
+              {farmLogo ? (
+                <img
+                  className="product-farm__avatar"
+                  src={farmLogo}
+                  alt=""
+                  aria-hidden="true"
+                  style={{ objectFit: "cover" }}
+                />
+              ) : (
+                <div className="product-farm__avatar" aria-hidden="true" />
+              )}
               <div>
                 <div className="product-farm__name">
                   Raised by {product.farm.name}
@@ -160,7 +208,9 @@ export default function ProductPage() {
             <ul className="product-related">
               {related.map((r) => (
                 <li key={r.id} className="product-related__item">
-                  <Link to={`/products/${r.id}`} className="product-related__thumb" aria-hidden="true" tabIndex={-1} />
+                  <Link to={`/products/${r.id}`} className="product-related__thumb" aria-hidden="true" tabIndex={-1}>
+                    {r.photoUrl && <img src={r.photoUrl} alt="" style={fill} />}
+                  </Link>
                   <div className="product-related__text">
                     <Link to={`/products/${r.id}`} className="product-related__name">
                       {r.name}
@@ -183,7 +233,17 @@ export default function ProductPage() {
       <div className="product-bar">
         <div className="product-bar__inner">
           <div className="product-bar__item">
-            <div className="product-placeholder product-bar__thumb" aria-hidden="true" />
+            {product.photoUrl ? (
+              <img
+                className="product-bar__thumb"
+                src={product.photoUrl}
+                alt=""
+                aria-hidden="true"
+                style={{ objectFit: "cover" }}
+              />
+            ) : (
+              <div className="product-placeholder product-bar__thumb" aria-hidden="true" />
+            )}
             <div className="product-bar__text">
               <div className="product-bar__name">
                 {product.name} · {product.farm.name}
