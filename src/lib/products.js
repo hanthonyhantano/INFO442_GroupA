@@ -1,3 +1,18 @@
+// Every image in assets/meat, keyed by filename without the extension
+const meatImages = import.meta.glob("../assets/meat/*.{jpg,jpeg,png}", {
+  eager: true,
+  import: "default",
+});
+
+const imageBySlug = Object.fromEntries(
+  Object.entries(meatImages).map(([path, url]) => [
+    path.split("/").pop().replace(/\.[^.]+$/, "").toLowerCase(),
+    url,
+  ])
+);
+
+// "Eye of Round" -> "eyeofround"
+const slug = (name) => name.toLowerCase().replace(/[^a-z0-9]/g, "");
 const COOK = {
   Braise: { time: "3 HR", temp: "300°F", steps: ["Salt and sear the meat.", "Add onions, stock, and herbs.", "Cover and braise until tender.", "Rest, then serve."] },
   Roast: { time: "2 HR", temp: "325°F", steps: ["Season and bring to room temperature.", "Roast on a rack.", "Cook to your target temperature.", "Rest before slicing."] },
@@ -48,3 +63,7 @@ export const PRODUCTS = [
   { ...base, id: 14, name: "Beef Cheeks", cut: "cheek", tags: ["Braising", "Cheek"],
     farm: LOREM, pricePerLb: 9.5, defaultSize: 2, availablePackages: 5, inStock: 5 },
 ];
+
+PRODUCTS.forEach((p) => {
+  p.photoUrl = imageBySlug[slug(p.name)] ?? null;
+});
