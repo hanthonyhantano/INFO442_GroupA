@@ -46,7 +46,7 @@ export default function App() {
         <Route path="today" element={<Today />} />
         <Route path="orders" element={<Orders />} />
         <Route path="inventory" element={<Inventory />} />
-        <Route path="batches" element={<Batches />} />
+        <Route path="batches" element={<Batches farmId={1} />} />
         <Route path="import" element={<Import />} />
         <Route path="profile" element={<FarmProfile />} />
       </Route>
