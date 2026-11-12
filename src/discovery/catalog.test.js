@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { visibleCatalog } from "./catalog";
+import { visibleCatalog, catalogCut, catalogFarm } from "./catalog";
 describe("marketplace selection", () => {
   const farms = [
     { id: 1, delivery_zips: ["98105"] },
@@ -45,4 +45,17 @@ describe("marketplace selection", () => {
       visibleCatalog({ farms, products: [product] }, "00000").items,
     ).toEqual([]);
   });
+});
+
+it("adapts actual cut fields and excludes held stock", () => {
+  const cut = catalogCut({ id: 1, farm_id: 2, is_live: true, packages_on_hand: 5, held: 2,
+    price_per_pound: 9, pounds_per_package: 1, cow_parts: { name: "Ground" } });
+  expect(cut).toMatchObject({ available_packages: 3, price_per_lb: 9, cut_category: "Ground", status: "Live" });
+  expect(catalogCut({ packages_on_hand: 1, held: 3 }).in_stock).toBe(false);
+});
+it("uses farm coordinates and only that farm's enabled delivery zones", () => {
+  const zones = [{ farm_id: 1, zip_codes: ["98105"] }, { farm_id: 2, zip_codes: ["98101"] }];
+  expect(catalogFarm({ id: 1, latitude: 47, longitude: -122, pickup_enabled: true, delivery_enabled: true }, zones))
+    .toMatchObject({ lat: 47, lng: -122, pickup: true, delivery_zips: ["98105"] });
+  expect(catalogFarm({ id: 1, delivery_enabled: false }, zones).delivery_zips).toEqual([]);
 });

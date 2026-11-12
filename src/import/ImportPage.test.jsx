@@ -4,7 +4,10 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-libra
 import { MemoryRouter } from 'react-router-dom'
 import ImportPage from './ImportPage'
 import { TEMPLATE } from './csv'
-afterEach(cleanup)
+afterEach(() => {
+  cleanup()
+  sessionStorage.clear()
+})
 
 async function upload(text = TEMPLATE, name = 'cuts.csv') {
   const file = new File([text], name, { type: 'text/csv' })
@@ -91,4 +94,18 @@ describe('producer import workflow', () => {
     })
     await waitFor(() => expect(screen.getByRole('alert').textContent).toMatch(/CSV/))
   })
+})
+
+it('restores the filename, corrected rows and progress after remounting', async () => {
+  show()
+  await upload()
+  fireEvent.change(screen.getByLabelText('Row 2 Product name'), {
+    target: { value: 'Ground beef' },
+  })
+  fireEvent.change(screen.getByLabelText('Row 2 Cut category'), { target: { value: 'Ground' } })
+  cleanup()
+  show()
+  expect(screen.getByLabelText('Row 2 Product name').value).toBe('Ground beef')
+  expect(screen.getByLabelText('Row 2 Cut category').getAttribute('aria-invalid')).toBe('false')
+  expect(screen.getByText(/cuts.csv/)).toBeTruthy()
 })

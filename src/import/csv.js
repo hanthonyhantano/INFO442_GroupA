@@ -1,7 +1,7 @@
 import Papa from 'papaparse'
 import { cuts } from '../discovery/cuts'
 
-export const CATEGORIES = [...Object.keys(cuts), 'Offal & Bones']
+export const CATEGORIES = [...Object.keys(cuts), 'Offal & Bones', 'Ground']
 export const FIELDS = [
   { key: 'name', label: 'Product name', aliases: ['name', 'cut', 'cut name'] },
   {

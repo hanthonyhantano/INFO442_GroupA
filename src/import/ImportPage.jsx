@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   autoMap,
@@ -13,24 +13,33 @@ import {
   TEMPLATE,
 } from './csv'
 import './import.css'
+import { readImportSession, saveImportSession } from './session'
 
 // Integration contract: inventory uses Selene's normalized cut shape.
 // onImport(plan) resolves only after an atomic, idempotent save succeeds.
 export default function ImportPage({ inventory = null, onImport, categories = CATEGORIES }) {
-  const [step, setStep] = useState(0)
-  const [file, setFile] = useState(null)
-  const [mapping, setMapping] = useState({})
-  const [skipErrors, setSkipErrors] = useState(false)
+  const [restored] = useState(readImportSession)
+  const [storageError, setStorageError] = useState(false)
+  const [step, setStep] = useState(restored?.step ?? 0)
+  const [file, setFile] = useState(restored?.file ?? null)
+  const [mapping, setMapping] = useState(restored?.mapping ?? {})
+  const [skipErrors, setSkipErrors] = useState(restored?.skipErrors ?? false)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
-  const [saved, setSaved] = useState(0)
+  const [saved, setSaved] = useState(restored?.saved ?? 0)
   const request = useRef(0)
   const saveLock = useRef(false)
-  const [transaction, setTransaction] = useState(null)
+  const [transaction, setTransaction] = useState(restored?.transaction ?? null)
   const rows = file ? reviewRows(file.records, mapping, inventory, categories) : []
   const ready = rows.filter((row) => !Object.keys(row.errors).length)
   const invalid = rows.length - ready.length
   const connected = inventory !== null && typeof onImport === 'function'
+
+  useEffect(() => {
+    // Report whether synchronization with browser storage succeeded.
+    // eslint-disable-next-line react/set-state-in-effect
+    setStorageError(!saveImportSession({ step, file, mapping, skipErrors, saved, transaction }))
+  }, [step, file, mapping, skipErrors, saved, transaction])
 
   async function upload(selected) {
     if (!selected || saveLock.current) return
@@ -116,6 +125,11 @@ export default function ImportPage({ inventory = null, onImport, categories = CA
           </li>
         ))}
       </ol>
+      {storageError && (
+        <p role="status">
+          Your browser could not save this draft. Keep this page open to avoid losing changes.
+        </p>
+      )}
       {error && (
         <p className="csv-error" role="alert">
           {error}
@@ -134,11 +148,18 @@ export default function ImportPage({ inventory = null, onImport, categories = CA
             upload(event.dataTransfer.files[0])
           }}
         >
-          <strong>{busy ? 'Reading file…' : 'Choose a CSV or drop it here'}</strong>
+          <strong>
+            {busy
+              ? 'Reading file…'
+              : file
+                ? 'Replace CSV or drop another here'
+                : 'Choose a CSV or drop it here'}
+          </strong>
           <span>
             First row must contain headers. Up to {MAX_ROWS.toLocaleString()} rows and 5 MB.
           </span>
           <input
+            className="csv-file-input"
             aria-label="CSV file"
             type="file"
             accept=".csv,text/csv"
