@@ -343,8 +343,11 @@ export function CartProvider({ children }) {
       remove,
       addToCart,
       dismissNotice,
+      refreshCart: () => refresh(cartId),
     };
   }, [
+    cartId,
+    refresh,
     items,
     notices,
     loading,
