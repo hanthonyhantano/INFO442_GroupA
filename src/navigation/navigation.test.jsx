@@ -15,6 +15,13 @@ vi.mock('../inventory/inventoryApi', () => ({
   saveCut: vi.fn(),
 }))
 
+vi.mock('../cart/CartContext', () => ({
+  CartProvider: ({ children }) => children,
+  useCart: () => ({ items: [], notices: [], loading: false, error: null, packageCount: 0, subtotal: 0 }),
+  formatMoney: value => '$' + value.toFixed(2),
+  itemEstimate: item => item.pricePerLb * item.lbsPerPackage * item.quantity,
+}))
+
 afterEach(cleanup)
 beforeEach(() => localStorage.clear())
 function mount(path = '/', props = {}) {
