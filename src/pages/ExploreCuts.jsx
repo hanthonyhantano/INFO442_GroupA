@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { cuts } from "../discovery/cuts";
 import CowDiagram from "../discovery/CowDiagram";
 import { CatalogState } from "../discovery/Content";
@@ -41,7 +41,12 @@ function StockItem({ cut }) {
   );
 }
 export default function ExploreCuts() {
-  const [part, setPart] = useState("Chuck");
+  const [params, setParams] = useSearchParams();
+  const requestedPart = params.get("part");
+  const part = Object.hasOwn(cuts, requestedPart) ? requestedPart : "Chuck";
+  function setPart(nextPart) {
+    setParams({ part: nextPart }, { replace: true });
+  }
   const catalog = useCatalog();
   const items = (catalog.data?.items ?? [])
     .filter((p) => String(p.cut_category).toLowerCase() === part.toLowerCase())
@@ -66,8 +71,8 @@ export default function ExploreCuts() {
               <span key={m}>{m}</span>
             ))}
           </div>
+          <h3>In stock now{catalog.data ? " · " + items.length : ""}</h3>
           <CatalogState catalog={catalog}>
-            <h3>In stock now · {items.length}</h3>
             {items.length ? (
               <ul className="dc-stock">
                 {items.map((p) => (

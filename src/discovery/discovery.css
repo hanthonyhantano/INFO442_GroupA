@@ -282,3 +282,27 @@
     font-size: 9px;
   }
 }
+
+/* Keep the explorer background continuous up to the navigation. */
+.navigation-main:has(> .dc-explorer) {
+  padding-top: 0;
+}
+.dc-explorer {
+  padding-top: 24px;
+}
+.dc-explorer header h1 {
+  margin-top: 0;
+}
+.dc-mission .dc-split {
+  gap: 32px;
+}
+.dc-mission .dc-pasture {
+  height: clamp(220px, 38svh, 360px);
+  aspect-ratio: auto;
+}
+.dc-mission h1 {
+  font-size: clamp(36px, 4vw, 56px);
+}
+.dc-mission > .dc-three {
+  margin-block: 32px;
+}

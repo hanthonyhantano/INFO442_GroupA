@@ -73,9 +73,9 @@ export const preview =
 export async function loadCatalog(zip) {
   if (preview) return { farms, products, center: centers[zip] };
   const { supabase } = await import("../lib/supabase");
-  const [f, p, z] = await Promise.all([
+  const [f, p, z, zones] = await Promise.all([
     supabase.from("farms").select("*"),
-    supabase.from("products").select("*").eq("in_stock", true),
+    supabase.from("cuts").select("*, cow_parts(name)").eq("is_live", true),
     zip
       ? supabase
           .from("zip_centers")
@@ -83,12 +83,44 @@ export async function loadCatalog(zip) {
           .eq("zip", zip)
           .maybeSingle()
       : { data: null },
+    supabase.from("delivery_zones").select("farm_id, zip_codes"),
   ]);
-  for (const result of [f, p, z]) if (result.error) throw result.error;
+  for (const result of [f, p, z, zones]) if (result.error) throw result.error;
   return {
-    farms: f.data,
-    products: p.data,
+    farms: f.data.map((farm) => catalogFarm(farm, zones.data)),
+    products: p.data.map(catalogCut),
     center: z.data && [z.data.lat, z.data.lng],
+  };
+}
+// Adapt the shared Supabase schema to the shopper card fields.
+export function catalogFarm(farm, zones = []) {
+  return {
+    ...farm,
+    lat: farm.latitude,
+    lng: farm.longitude,
+    pickup: farm.pickup_enabled,
+    delivery_zips: farm.delivery_enabled
+      ? zones.filter(zone => zone.farm_id === farm.id).flatMap(zone => zone.zip_codes ?? [])
+      : [],
+    photo_url: farm.cover_photo,
+    operator: farm.owner_names,
+    description: farm.short_description,
+    tags: farm.practices ?? [],
+  };
+}
+export function catalogCut(cut) {
+  const available = Math.max(0, Number(cut.packages_on_hand) - Number(cut.held ?? 0));
+  return {
+    ...cut,
+    photo_url: cut.photo,
+    price_per_lb: cut.price_per_pound,
+    approx_weight_lb: cut.pounds_per_package,
+    available_packages: available,
+    in_stock: available > 0,
+    status: cut.is_live ? "Live" : "Draft",
+    cut_category: cut.cow_parts?.name ?? "",
+    cooking_tag: Array.isArray(cut.cooking_tags) ? cut.cooking_tags.join(" · ") : cut.cooking_tags,
+    featured: cut.is_featured,
   };
 }
 function miles(center, farm) {

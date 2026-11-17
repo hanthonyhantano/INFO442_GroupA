@@ -13,7 +13,7 @@ a { color: inherit; }
 .skip-link { position: fixed; top: -100px; left: 12px; z-index: 100; padding: 12px; background: white; }
 .skip-link:focus { top: 8px; }
 .announcement { background: #12376a; color: #f8f5ed; text-align: center; font-size: 12px; padding: 8px 16px; }
-.shopper-header { position: relative; display: flex; align-items: center; gap: 28px; padding: 14px 56px; border-bottom: 1px solid #d5e0ee; background: #ffffffed; color: #294b75; }
+.shopper-header { position: sticky; top: 0; z-index: 30; display: flex; align-items: center; gap: 28px; padding: 14px 56px; border-bottom: 1px solid #d5e0ee; background: #f8f6ee; color: #294b75; }
 .shopper-header .brand { display: flex; flex-shrink: 0; }
 .shopper-header .brand img { width: 129.14px; height: 24px; object-fit: contain; }
 .shopper-nav { display: flex; flex: 1; flex-wrap: wrap; gap: 4px; }

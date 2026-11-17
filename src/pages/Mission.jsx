@@ -3,7 +3,7 @@ import pasture from "../assets/discovery/pasture.jpg";
 import { Principles } from "../discovery/Content";
 export default function Mission() {
   return (
-    <article className="dc">
+    <article className="dc dc-mission">
       <div className="dc-split">
         <div>
           <small>Our mission</small>

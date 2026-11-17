@@ -9,6 +9,12 @@ import { NavigationProvider } from './NavigationProvider'
 import { useNavigation } from './useNavigation'
 import { readZip, saveZip, visibleCount } from './navigation'
 
+// Navigation tests exercise routes without connecting to a real producer database.
+vi.mock('../inventory/inventoryApi', () => ({
+  fetchInventory: vi.fn().mockResolvedValue({ farmId: null, cuts: [] }),
+  saveCut: vi.fn(),
+}))
+
 afterEach(cleanup)
 beforeEach(() => localStorage.clear())
 function mount(path = '/', props = {}) {
