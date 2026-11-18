@@ -20,12 +20,17 @@ import Inventory from './pages/producer/Inventory'
 import Batches from './pages/producer/Batches'
 import Import from './pages/producer/Import'
 import FarmProfile from './pages/producer/FarmProfile'
+import { CartProvider } from "./cart/CartContext";
 import './App.css'
 
 export default function App() {
   return (
     <Routes>
-      <Route element={<ShopperLayout />}>
+      <Route element={
+          <CartProvider>
+            <ShopperLayout />
+          </CartProvider>
+        }>
         <Route path="/" element={<Home />} />
         <Route path="/shop" element={<Shop />} />
         <Route path="/shop/:cutId" element={<ProductPage />} />
