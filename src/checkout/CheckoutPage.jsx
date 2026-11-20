@@ -32,8 +32,8 @@ export default function CheckoutPage({
   async function submit(event) {
     event.preventDefault();
     if (lock.current || !submitOrder) return;
-    const found = validateCheckout(contact, items);
-    for (const group of groups) {
+    const found = pending ? {} : validateCheckout(contact, items);
+    for (const group of pending ? [] : groups) {
       const option = options.find(
         (farm) => String(farm.id) === String(group.farm.id),
       );
@@ -88,6 +88,9 @@ export default function CheckoutPage({
         throw new Error("Invalid receipt");
       navigate("/request-sent", { replace: true, state: { receipt } });
     } catch (failure) {
+      // A rejected transaction saved nothing, so the shopper can correct it.
+      // An unknown network outcome must retry the same request ID.
+      if (failure.orderRejected) setPending(null);
       setErrors({
         submit:
           failure.message || "We could not confirm your request. Try again.",
@@ -98,14 +101,14 @@ export default function CheckoutPage({
     }
   }
 
-  if (loading) return <p role="status">Loading checkout…</p>;
-  if (error)
+  if (loading && !pending) return <p role="status">Loading checkout…</p>;
+  if (error && !pending)
     return (
       <p role="alert">
         Your cart could not load. <Link to="/cart">Return to cart</Link>
       </p>
     );
-  if (!items.length)
+  if (!items.length && !pending)
     return (
       <section className="checkout-page">
         <h1>Your cart is empty</h1>
@@ -262,11 +265,21 @@ export default function CheckoutPage({
           {(errors.cart || errors.submit) && (
             <p role="alert">{errors.cart || errors.submit}</p>
           )}
+          {pending && !sending && (
+            <p role="status">
+              We could not confirm whether your request was saved. Retry this
+              request before making changes to avoid duplicate orders.
+            </p>
+          )}
           <button
             className="checkout-primary"
             disabled={sending || !submitOrder}
           >
-            {sending ? "Sending request…" : "Send order request"}
+            {sending
+              ? "Sending request…"
+              : pending
+                ? "Retry order request"
+                : "Send order request"}
           </button>
         </form>
         <aside className="checkout-summary" aria-label="Order summary">

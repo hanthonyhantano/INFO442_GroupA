@@ -13,15 +13,14 @@ const CART_ITEM_SELECT = `
   id, quantity, created_at, pack_size_lb,
   cut:cuts (
     id, name, photo, price_per_pound, pounds_per_package,
-    packages_on_hand, is_live,
+    packages_on_hand, held, is_live,
     farm:farms ( id, name, town, state, delivery_enabled, delivery_minimum )
   )
 `;
 
-// Packages of a cut the shop has, the same way the product page counts it.
-// A cut that's no longer live counts as sold out.
+// Match checkout by excluding stock already held for orders.
 export const stockFor = (cut) =>
-  cut.is_live ? Math.max(cut.packages_on_hand ?? 0, 0) : 0;
+  cut.is_live ? Math.max((cut.packages_on_hand ?? 0) - (cut.held ?? 0), 0) : 0;
 
 function toCartItem(row) {
   const { cut } = row;
@@ -36,7 +35,7 @@ function toCartItem(row) {
     // own weight for items added before sizes were saved.
     lbsPerPackage: Number(row.pack_size_lb ?? cut.pounds_per_package),
     quantity: row.quantity,
-    // Packages of this cut in stock, shared by every cart row for the cut
+    // Packages of this cut in stock, shared by every cart row for the cut.
     stock: stockFor(cut),
     farm: {
       id: farm.id,
