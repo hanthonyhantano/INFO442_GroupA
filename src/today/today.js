@@ -55,6 +55,7 @@ export function buildTasks(orders, cuts) {
       type: 'conflict',
       category: 'Orders',
       tag: 'Conflict',
+      orderId: order.id,
       title: order.number + ' requests more than you have',
       description: 'Short by ' + plural(shortages.get(order.id), 'package') + '. Lower the quantity or reject the order.',
       action: 'Resolve',
