@@ -15,6 +15,13 @@ vi.mock('../inventory/inventoryApi', () => ({
   saveCut: vi.fn(),
 }))
 
+vi.mock('../cart/CartContext', () => ({
+  CartProvider: ({ children }) => children,
+  useCart: () => ({ items: [], notices: [], loading: false, error: null, packageCount: 0, subtotal: 0 }),
+  formatMoney: value => '$' + value.toFixed(2),
+  itemEstimate: item => item.pricePerLb * item.lbsPerPackage * item.quantity,
+}))
+
 afterEach(cleanup)
 beforeEach(() => localStorage.clear())
 function mount(path = '/', props = {}) {
@@ -31,7 +38,7 @@ describe('shopper navigation', () => {
       expect(screen.getByRole('link', { name: label, exact: true }).getAttribute('aria-current')).toBe('page')
     }
     await user.click(screen.getByRole('link', { name: 'Cart', exact: true }))
-    expect(screen.getByRole('heading', { name: 'Cart' })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'Your cart' })).toBeTruthy()
     expect(screen.getByRole('link', { name: 'Shop', exact: true }).className).toBe('active')
     await user.click(screen.getByRole('link', { name: 'Cat Cow home' }))
     expect(screen.getByRole('heading', { name: /Good beef/ })).toBeTruthy()
