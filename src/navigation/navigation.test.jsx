@@ -31,7 +31,7 @@ describe('shopper navigation', () => {
       expect(screen.getByRole('link', { name: label, exact: true }).getAttribute('aria-current')).toBe('page')
     }
     await user.click(screen.getByRole('link', { name: 'Cart', exact: true }))
-    expect(screen.getByRole('heading', { name: 'Cart' })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'Your cart' })).toBeTruthy()
     expect(screen.getByRole('link', { name: 'Shop', exact: true }).className).toBe('active')
     await user.click(screen.getByRole('link', { name: 'Cat Cow home' }))
     expect(screen.getByRole('heading', { name: /Good beef/ })).toBeTruthy()
