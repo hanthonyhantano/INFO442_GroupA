@@ -25,9 +25,14 @@ export default function Checkout() {
     };
   }, [farmKey]);
   async function send(payload) {
-    const receipt = await submitOrder(payload);
-    refreshCart().catch(() => {});
-    return receipt;
+    try {
+      const receipt = await submitOrder(payload);
+      refreshCart().catch(() => {});
+      return receipt;
+    } catch (failure) {
+      if (failure.refreshCart) await refreshCart().catch(() => {});
+      throw failure;
+    }
   }
   return (
     <CheckoutPage

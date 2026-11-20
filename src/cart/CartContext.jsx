@@ -17,7 +17,7 @@ const CART_ITEM_SELECT = `
   id, quantity, created_at,
   cut:cuts (
     id, name, photo, price_per_pound, pounds_per_package,
-    packages_on_hand, is_live,
+    packages_on_hand, held, is_live,
     farm:farms ( id, name, town, state, delivery_enabled, delivery_minimum )
   )
 `;
@@ -33,8 +33,10 @@ function toCartItem(row) {
     pricePerLb: Number(cut.price_per_pound),
     lbsPerPackage: Number(cut.pounds_per_package),
     quantity: row.quantity,
-    // A cut that's no longer live counts as sold out
-    available: cut.is_live ? Math.max(cut.packages_on_hand, 0) : 0,
+    // Match checkout: packages reserved by existing orders are not available.
+    available: cut.is_live
+      ? Math.max(cut.packages_on_hand - (cut.held ?? 0), 0)
+      : 0,
     farm: {
       id: farm.id,
       name: farm.name,
