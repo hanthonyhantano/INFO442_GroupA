@@ -1,12 +1,18 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { fetchInventory, saveCut } from './inventoryApi'
+import { createCut, fetchInventory, saveCut } from './inventoryApi'
 import {
   CHIPS, availableOf, chipCounts, filterCuts, groupCuts, headerTotals, isDirty, onHandByPart, rowStatus, validateCut,
 } from './inventory'
 import EditPanel from './EditPanel'
-import './inventory.css'
 import CowDiagram from '../discovery/CowDiagram'
+import './inventory.css'
+
+const NEW = 'new'
+const BLANK_DRAFT = {
+  name: '', partId: '', batchId: '', description: '', onHand: '',
+  pricePerPound: '', poundsPerPackage: '', isLive: false, isFeatured: false,
+}
 
 function toDraft(cut) {
   return {
@@ -49,7 +55,10 @@ function CutRow({ cut, selected, onSelect }) {
 }
 
 export default function InventoryPage() {
+  const [farmId, setFarmId] = useState(null)
   const [cuts, setCuts] = useState([])
+  const [partOptions, setPartOptions] = useState([])
+  const [batchOptions, setBatchOptions] = useState([])
   const [status, setStatus] = useState('loading')
   const [search, setSearch] = useState('')
   const [chip, setChip] = useState('all')
@@ -64,9 +73,12 @@ export default function InventoryPage() {
   useEffect(() => {
     let cancelled = false
     fetchInventory()
-      .then(({ cuts: loaded }) => {
+      .then((result) => {
         if (cancelled) return
-        setCuts(loaded)
+        setFarmId(result.farmId)
+        setCuts(result.cuts)
+        setPartOptions(result.parts)
+        setBatchOptions(result.batches)
         setStatus('ready')
       })
       .catch(() => { if (!cancelled) setStatus('error') })
@@ -81,13 +93,24 @@ export default function InventoryPage() {
     [cuts, search, chip, part],
   )
 
-  const selected = cuts.find((cut) => cut.id === selectedId) ?? null
-  const dirty = selected && draft ? isDirty(selected, draft) : false
+  const isNew = selectedId === NEW
+  const panelOpen = selectedId !== null && draft !== null
+  const selected = isNew ? null : cuts.find((cut) => cut.id === selectedId) ?? null
+  const dirty = isNew
+    ? JSON.stringify(draft) !== JSON.stringify(BLANK_DRAFT)
+    : Boolean(selected && draft && isDirty(selected, draft))
 
   function openCut(id) {
     const cut = cuts.find((item) => item.id === id)
     setSelectedId(id)
     setDraft(toDraft(cut))
+    setErrors({})
+    setSaveError('')
+    setPending(null)
+  }
+  function openNew() {
+    setSelectedId(NEW)
+    setDraft({ ...BLANK_DRAFT })
     setErrors({})
     setSaveError('')
     setPending(null)
@@ -99,19 +122,26 @@ export default function InventoryPage() {
     setSaveError('')
     setPending(null)
   }
+  function run(action) {
+    if (action.type === 'close') closePanel()
+    else if (action.type === 'new') openNew()
+    else openCut(action.id)
+  }
   function request(action) {
     if (dirty) setPending(action)
-    else if (action.type === 'close') closePanel()
-    else openCut(action.id)
+    else run(action)
   }
   function selectRow(id) {
     if (id !== selectedId) request({ type: 'open', id })
+  }
+  function addCut() {
+    if (!isNew) request({ type: 'new' })
   }
   function change(field, value) {
     setDraft((current) => ({ ...current, [field]: value }))
     setErrors((current) => ({ ...current, [field]: undefined }))
   }
-    function togglePart(name) {
+  function togglePart(name) {
     setPart((current) => (current === name ? null : name))
   }
   function step(delta) {
@@ -121,6 +151,32 @@ export default function InventoryPage() {
   }
 
   async function save() {
+    if (isNew) {
+      const found = validateCut(draft, { isNew: true })
+      if (!draft.partId) found.partId = 'Choose a part of the cow.'
+      if (!draft.batchId) found.batchId = 'Choose a batch.'
+      setErrors(found)
+      if (Object.keys(found).length > 0) return
+      setSaving(true)
+      setSaveError('')
+      try {
+        const created = await createCut(farmId, draft)
+        setCuts((list) => [...list, created])
+        // Clear filters so the new cut is visible in the list.
+        setSearch('')
+        setChip('all')
+        setPart(null)
+        setSelectedId(created.id)
+        setDraft(toDraft(created))
+      } catch (error) {
+        if (error?.code === '23505') setErrors({ name: 'A cut with this name already exists in that batch.' })
+        else setSaveError('Something went wrong. Try again.')
+      } finally {
+        setSaving(false)
+      }
+      return
+    }
+
     const found = validateCut(draft, { held: selected.held, savedOnHand: selected.onHand })
     setErrors(found)
     if (Object.keys(found).length > 0) return
@@ -148,19 +204,11 @@ export default function InventoryPage() {
 
   if (status === 'loading') return <p className="inv-message">Loading inventory…</p>
   if (status === 'error') return <p className="inv-message" role="alert">Something went wrong. Try again.</p>
-  if (cuts.length === 0) {
-    return (
-      <div className="inv">
-        <p className="inv-message">No cuts yet. Import a cut sheet or add a cut.</p>
-        <Link className="inv-button" to="/producer/import">Import CSV</Link>
-      </div>
-    )
-  }
 
   const maxOnHand = Math.max(...bars.map((bar) => bar.onHand), 1)
 
   return (
-    <div className={selected ? 'inv-layout has-panel' : 'inv-layout'}>
+    <div className={panelOpen ? 'inv-layout has-panel' : 'inv-layout'}>
       <div className="inv">
         <div className="inv-toolbar">
           <p className="inv-totals">{totals.available} available · {totals.cuts} cuts</p>
@@ -173,76 +221,86 @@ export default function InventoryPage() {
             onChange={(event) => setSearch(event.target.value)}
           />
           <Link className="inv-button" to="/producer/import">Import CSV</Link>
+          <button type="button" className="inv-button primary" onClick={addCut}>+ Add cut</button>
         </div>
 
-        <div className="inv-chips" role="group" aria-label="Filter cuts">
-          {CHIPS.map(({ key, label }) => (
-            <button
-              key={key}
-              type="button"
-              className={chip === key ? 'inv-chip is-selected' : 'inv-chip'}
-              aria-pressed={chip === key}
-              onClick={() => setChip(key)}
-            >
-              {label} {counts[key]}
-            </button>
-          ))}
-        </div>
-
-        <section className="inv-animal" aria-label="Inventory across the animal">
-          <h2>Inventory across the animal</h2>
-          <div className="inv-animal-body">
-            <div className="inv-cow">
-              <CowDiagram selected={part} onSelect={togglePart} />
-            </div>
-            <ul>
-              {bars.map(({ part: name, onHand }) => (
-                <li key={name}>
-                  <button
-                    type="button"
-                    className={part === name ? 'inv-bar-row is-selected' : 'inv-bar-row'}
-                    aria-pressed={part === name}
-                    onClick={() => togglePart(name)}
-                  >
-                    <span className="inv-bar-label">{name}</span>
-                    <span className="inv-bar"><span style={{ width: (onHand / maxOnHand) * 100 + '%' }} /></span>
-                    <span className="inv-bar-count">{onHand}</span>
-                  </button>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </section>
-
-        {groups.length === 0 ? (
-          <p className="inv-message">{search.trim() ? 'No cuts match your search.' : 'No cuts match this filter.'}</p>
+        {cuts.length === 0 ? (
+          <p className="inv-message">No cuts yet. Import a cut sheet or add a cut.</p>
         ) : (
-          groups.map((group) => (
-            <section key={group.name} className="inv-group">
-              <h2>{group.name} <span>{group.onHand} PKGS</span></h2>
-              <ul>
-                {group.cuts.map((cut) => (
-                  <CutRow key={cut.id} cut={cut} selected={cut.id === selectedId} onSelect={selectRow} />
-                ))}
-              </ul>
+          <>
+            <div className="inv-chips" role="group" aria-label="Filter cuts">
+              {CHIPS.map(({ key, label }) => (
+                <button
+                  key={key}
+                  type="button"
+                  className={chip === key ? 'inv-chip is-selected' : 'inv-chip'}
+                  aria-pressed={chip === key}
+                  onClick={() => setChip(key)}
+                >
+                  {label} {counts[key]}
+                </button>
+              ))}
+            </div>
+
+            <section className="inv-animal" aria-label="Inventory across the animal">
+              <h2>Inventory across the animal</h2>
+              <div className="inv-animal-body">
+                <div className="inv-cow">
+                  <CowDiagram selected={part} onSelect={togglePart} />
+                </div>
+                <ul>
+                  {bars.map(({ part: name, onHand }) => (
+                    <li key={name}>
+                      <button
+                        type="button"
+                        className={part === name ? 'inv-bar-row is-selected' : 'inv-bar-row'}
+                        aria-pressed={part === name}
+                        onClick={() => togglePart(name)}
+                      >
+                        <span className="inv-bar-label">{name}</span>
+                        <span className="inv-bar"><span style={{ width: (onHand / maxOnHand) * 100 + '%' }} /></span>
+                        <span className="inv-bar-count">{onHand}</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             </section>
-          ))
+
+            {groups.length === 0 ? (
+              <p className="inv-message">{search.trim() ? 'No cuts match your search.' : 'No cuts match this filter.'}</p>
+            ) : (
+              groups.map((group) => (
+                <section key={group.name} className="inv-group">
+                  <h2>{group.name} <span>{group.onHand} PKGS</span></h2>
+                  <ul>
+                    {group.cuts.map((cut) => (
+                      <CutRow key={cut.id} cut={cut} selected={cut.id === selectedId} onSelect={selectRow} />
+                    ))}
+                  </ul>
+                </section>
+              ))
+            )}
+          </>
         )}
       </div>
 
-      {selected && (
+      {panelOpen && (
         <EditPanel
           cut={selected}
+          isNew={isNew}
           draft={draft}
           errors={errors}
           saving={saving}
           saveError={saveError}
           confirmDiscard={pending !== null}
+          partOptions={partOptions}
+          batchOptions={batchOptions}
           onChange={change}
           onStep={step}
           onSave={save}
           onClose={() => request({ type: 'close' })}
-          onDiscard={() => (pending.type === 'close' ? closePanel() : openCut(pending.id))}
+          onDiscard={() => run(pending)}
           onKeep={() => setPending(null)}
         />
       )}
