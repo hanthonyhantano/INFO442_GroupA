@@ -1,3 +1,5 @@
+import TodayPage from '../../today/TodayPage'
+
 export default function Today() {
-  return <h1>Today</h1>
+  return <TodayPage />
 }
