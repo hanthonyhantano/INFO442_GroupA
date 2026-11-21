@@ -1,12 +1,12 @@
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useNavigation } from "../navigation/useNavigation";
-import { PRODUCTS } from "../lib/products";
+import { contentFor } from "../lib/products";
 import CowDiagram from "../discovery/CowDiagram";
 import { supabase } from "../lib/supabase";
-import { useCart } from "../cart/CartContext";
+import { useCart, stockFor } from "../cart/CartContext";
 
-// Local farm logos, used when a farm row has no logo_url in Supabase (same fallback as FarmPage).
+// Local farm logos, used when a farm row has no logo in Supabase (same fallback as FarmPage).
 import farm1 from "../assets/farm/farm1.jpg";
 import farm2 from "../assets/farm/farm2.jpg";
 import farm3 from "../assets/farm/farm3.jpg";
@@ -18,51 +18,102 @@ const fill = { width: "100%", height: "100%", objectFit: "cover", display: "bloc
 
 const money = (n) => `$${n.toFixed(2)}`;
 
-// The cart stores Supabase cuts.id. If a PRODUCTS entry has a `cutId`
-// field it's used; otherwise the product's own id must match cuts.id.
-const cutIdFor = (p) => p.cutId ?? p.id;
+// Columns the page needs from Supabase, with the farm joined in via cuts.farm_id.
+const CUT_COLUMNS = `
+  id, name, description, photo, cooking_tags,
+  price_per_pound, pounds_per_package, packages_on_hand, is_live,
+  farm:farms ( id, name, town, state, logo )
+`;
+
+// Only use a Supabase image value if it's a full URL the browser can load
+// (not a bare filename or storage path).
+const asUrl = (v) =>
+  typeof v === "string" && /^(https?:|data:|blob:)/.test(v.trim()) ? v.trim() : null;
+
+// Turns a Supabase cuts row into the shape the page renders.
+// Price, stock, farm, name and photo come from Supabase; written content
+// (cook steps, cow region, blurbs) still comes from lib/products.js.
+function toProduct(row) {
+  const content = contentFor(row.name);
+  const dbSize = Number(row.pounds_per_package) || null;
+  const defaultSize = dbSize ?? content.defaultSize;
+  const packSizes = [...new Set([...content.packSizes, defaultSize])].sort((a, b) => a - b);
+  const farm = row.farm ?? {};
+
+  return {
+    ...content,
+    id: row.id,
+    name: row.name,
+    blurb: row.description || content.blurb,
+    tags: row.cooking_tags?.length ? row.cooking_tags : content.tags,
+    // Local assets/meat image first (these worked before), then Supabase if it's a real URL
+    photoUrl: content.photoUrl || asUrl(row.photo),
+    pricePerLb: Number(row.price_per_pound) || 0,
+    // Same stock rule as the cart (CartContext stockFor)
+    inStock: stockFor(row),
+    defaultSize,
+    packSizes,
+    farm: {
+      id: farm.id ?? null,
+      name: farm.name ?? "a local farm",
+      town: [farm.town, farm.state].filter(Boolean).join(", "),
+      logo: asUrl(farm.logo) || LOCAL_LOGOS[farm.id] || null,
+    },
+  };
+}
 
 export default function ProductPage() {
   const { productId } = useParams();
   const { zip } = useNavigation();
   const { items: cartItems, addToCart } = useCart();
 
-  const product = PRODUCTS.find((p) => p.id === parseInt(productId, 10));
+  // undefined = loading, null = not found
+  const [product, setProduct] = useState(undefined);
+  const [related, setRelated] = useState([]);
+
   const cut = product?.cut
-  ? product.cut[0].toUpperCase() + product.cut.slice(1)
-  : null;
+    ? product.cut[0].toUpperCase() + product.cut.slice(1)
+    : null;
 
-  const related = PRODUCTS.filter((p) => p.id !== product?.id).slice(0, 3);
-
-  const [size, setSize] = useState(product?.defaultSize ?? 2.5);
+  const [size, setSize] = useState(2.5);
   const [qty, setQty] = useState(1);
   const [method, setMethod] = useState("Braise");
-  const [farmLogo, setFarmLogo] = useState(null);
 
   // "idle" | "adding" | "added" | "error"
   const [addStatus, setAddStatus] = useState("idle");
   // Related item ids currently being added / just added
   const [relatedStatus, setRelatedStatus] = useState({});
 
-  // Farm logo comes from Supabase farms.logo_url, falling back to the local image.
+  // Load this cut (the URL id is cuts.id) and three others for "If you like this, try"
   useEffect(() => {
-    const farmId = product?.farm?.id;
-    if (!farmId) return;
+    const id = Number(productId);
     let cancelled = false;
-    setFarmLogo(LOCAL_LOGOS[farmId] ?? null);
-    supabase
-      .from("farms")
-      .select("logo_url")
-      .eq("id", farmId)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (!cancelled && data?.logo_url) setFarmLogo(data.logo_url);
-      });
+    setProduct(undefined);
+    setRelated([]);
+
+    if (!Number.isInteger(id)) {
+      setProduct(null);
+      return;
+    }
+
+    Promise.all([
+      supabase.from("cuts").select(CUT_COLUMNS).eq("id", id).maybeSingle(),
+      supabase.from("cuts").select(CUT_COLUMNS).neq("id", id).order("id").limit(3),
+    ]).then(([main, others]) => {
+      if (cancelled) return;
+      if (main.error) console.error("Loading cut failed:", main.error);
+      if (others.error) console.error("Loading related cuts failed:", others.error);
+
+      const p = main.data ? toProduct(main.data) : null;
+      setProduct(p);
+      setRelated((others.data ?? []).map(toProduct));
+      setSize(p?.defaultSize ?? 2.5);
+    });
+
     return () => { cancelled = true; };
-  }, [product?.farm?.id]);
+  }, [productId]);
 
   useEffect(() => {
-    setSize(product?.defaultSize ?? 2.5);
     setQty(1);
     setMethod("Braise");
     setAddStatus("idle");
@@ -75,6 +126,16 @@ export default function ProductPage() {
     const t = setTimeout(() => setAddStatus("idle"), 4000);
     return () => clearTimeout(t);
   }, [addStatus]);
+
+  if (product === undefined) {
+    return (
+      <div className="product-page">
+        <div className="product-container product-notice">
+          <p className="product-notice__text">Loading…</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!product) {
     return (
@@ -90,9 +151,11 @@ export default function ProductPage() {
     );
   }
 
-  // How many of this cut are already in the cart, and how many more can be added
-  const inCart =
-    cartItems.find((i) => i.cutId === cutIdFor(product))?.quantity ?? 0;
+  // How many packages of this cut are already in the cart (any size),
+  // and how many more can be added
+  const inCart = cartItems
+    .filter((i) => i.cutId === product.id)
+    .reduce((sum, i) => sum + (i.quantity ?? 0), 0);
   const canAdd = Math.max(product.inStock - inCart, 0);
 
   const cook = product.cook[method];
@@ -108,7 +171,7 @@ export default function ProductPage() {
     if (qty > canAdd || addStatus === "adding") return;
     setAddStatus("adding");
     try {
-      await addToCart(cutIdFor(product), qty);
+      await addToCart(product.id, qty, size);
       setAddStatus("added");
       setQty(1);
     } catch (err) {
@@ -121,7 +184,7 @@ export default function ProductPage() {
     if (relatedStatus[r.id] === "adding") return;
     setRelatedStatus((s) => ({ ...s, [r.id]: "adding" }));
     try {
-      await addToCart(cutIdFor(r), 1);
+      await addToCart(r.id, 1, r.defaultSize);
       setRelatedStatus((s) => ({ ...s, [r.id]: "added" }));
     } catch (err) {
       console.error("Add to cart failed:", err);
@@ -184,10 +247,10 @@ export default function ProductPage() {
             </div>
 
             <div className="product-farm">
-              {farmLogo ? (
+              {product.farm.logo ? (
                 <img
                   className="product-farm__avatar"
-                  src={farmLogo}
+                  src={product.farm.logo}
                   alt=""
                   aria-hidden="true"
                   style={{ objectFit: "cover" }}
@@ -199,12 +262,14 @@ export default function ProductPage() {
                 <div className="product-farm__name">
                   Raised by {product.farm.name}
                 </div>
-                <div className="product-farm__meta">
-                  {product.farm.town} ·{" "}
-                  <Link to={`/farms/${product.farm.id}`} className="product-link">
-                    Meet the farmer
-                  </Link>
-                </div>
+                {product.farm.id && (
+                  <div className="product-farm__meta">
+                    {product.farm.town && <>{product.farm.town} · </>}
+                    <Link to={`/farms/${product.farm.id}`} className="product-link">
+                      Meet the farmer
+                    </Link>
+                  </div>
+                )}
               </div>
             </div>
           </div>
