@@ -1,18 +1,23 @@
 import { useEffect, useState } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useNavigation } from "../navigation/useNavigation";
-import { PRODUCTS } from "../lib/products";
-import { supabase } from "../lib/supabase"; 
+import { contentFor } from "../lib/products";
+import { supabase } from "../lib/supabase";
+import { stockFor } from "../cart/CartContext";
 
-// Local images, used when a farm row has no cover_url / logo_url in Supabase.
 import farm1 from "../assets/farm/farm1.jpg";
 import farm2 from "../assets/farm/farm2.jpg";
 import farm3 from "../assets/farm/farm3.jpg";
 import farm4 from "../assets/farm/farm4.jpg";
 import farm7 from "../assets/farm/farm7.jpg";
 
+// Local images, used when a farm has no cover_photo / logo URL in Supabase.
 const DEFAULT_COVER = farm7;
 const LOCAL_LOGOS = { 1: farm1, 2: farm2, 3: farm3, 4: farm4 }; 
+
+// Only use a Supabase image value if it's a full URL the browser can load
+const asUrl = (v) =>
+  typeof v === "string" && /^(https?:|data:|blob:)/.test(v.trim()) ? v.trim() : null;
 
 // 0 = Sun, 1 = Mon, 2 = Tue, 3 = Wed, 4 = Thu, 5 = Fri, 6 = Sat
 function getNextDeliveryDate(weekdays, from = new Date()) {
@@ -46,24 +51,43 @@ function formatMoney(value) {
   return value;
 }
 
+// Supabase farms columns -> what the page renders.
+// Columns that don't exist in farms yet (delivery_zips, delivery_weekdays,
+// delivery_fee, photos) are still read, so adding them later just works.
 function mapFarmRow(row) {
+  // Next delivery: from delivery_weekdays if you add it, otherwise
+  // today + the farm's lead time.
+  const weekdays = row.delivery_weekdays ?? [];
+  const leadDays = row.delivery_lead_time_days;
+  const leadDate =
+    leadDays != null
+      ? (() => {
+          const d = new Date();
+          d.setHours(0, 0, 0, 0);
+          d.setDate(d.getDate() + leadDays);
+          return d;
+        })()
+      : null;
+
   return {
     id: row.id,
     name: row.name,
-    coverUrl: row.cover_url || DEFAULT_COVER,
-    logoUrl: row.logo_url || LOCAL_LOGOS[row.id] || null,
-    town: row.town ?? "",
-    owners: row.owners ?? "",
-    founded: row.founded ?? null,
-    story: row.story ?? "",
-    tags: row.tags ?? [],
-    photos: row.photos ?? [],
+    coverUrl: asUrl(row.cover_photo) || DEFAULT_COVER,
+    logoUrl: asUrl(row.logo) || LOCAL_LOGOS[row.id] || null,
+    town: [row.town, row.state].filter(Boolean).join(", "),
+    owners: row.owner_names ?? "",
+    founded: row.year_founded ?? null,
+    story: row.story || row.short_description || "",
+    tags: row.practices ?? [],
+    photos: (row.photos ?? []).map(asUrl).filter(Boolean),
     delivery: {
+      enabled: row.delivery_enabled !== false,
       zips: row.delivery_zips ?? [],
-      weekdays: row.delivery_weekdays ?? [],
+      nextDate: weekdays.length ? getNextDeliveryDate(weekdays) : leadDate,
       fee: formatMoney(row.delivery_fee),
-      minimum: formatMoney(row.delivery_minimum),
+      minimum: formatMoney(row.delivery_minimum == null ? null : Number(row.delivery_minimum)),
     },
+    pickupEnabled: row.pickup_enabled !== false,
     pickups: (row.pickups ?? []).map((p) => ({
       id: p.id,
       name: p.name,
@@ -78,20 +102,42 @@ function mapFarmRow(row) {
   };
 }
 
+// A Supabase cuts row -> what a product card needs. Same sources as the
+// product page: id/price/stock/weight from Supabase, image local-first.
+function mapCutRow(row) {
+  const content = contentFor(row.name);
+  return {
+    id: row.id, // cuts.id, the id the product page and cart use
+    name: row.name,
+    photoUrl: content.photoUrl || asUrl(row.photo),
+    pricePerLb: Number(row.price_per_pound) || 0,
+    defaultSize: Number(row.pounds_per_package) || content.defaultSize,
+    availablePackages: stockFor(row),
+  };
+}
+
 async function fetchFarm(id) {
   if (!Number.isFinite(id)) return { farm: null, products: [] };
 
-  const { data, error } = await supabase
-    .from("farms")
-    .select("*, pickups:pickup_locations(*)")
-    .eq("id", id)
-    .maybeSingle();
+  const [farmRes, cutsRes] = await Promise.all([
+    supabase
+      .from("farms")
+      .select("*, pickups:pickup_locations(*)")
+      .eq("id", id)
+      .maybeSingle(),
+    supabase
+      .from("cuts")
+      .select("id, name, photo, price_per_pound, pounds_per_package, packages_on_hand, is_live")
+      .eq("farm_id", id)
+      .order("name"),
+  ]);
 
-  if (error) throw error;
-  if (!data) return { farm: null, products: [] };
+  if (farmRes.error) throw farmRes.error;
+  if (cutsRes.error) throw cutsRes.error;
+  if (!farmRes.data) return { farm: null, products: [] };
 
-  const farm = mapFarmRow(data);
-  const products = PRODUCTS.filter((p) => p.farm.id === farm.id);
+  const farm = mapFarmRow(farmRes.data);
+  const products = (cutsRes.data ?? []).map(mapCutRow);
   return { farm, products };
 }
 
@@ -169,10 +215,11 @@ export default function FarmPage() {
 
   const { farm, products } = state;
   const inStock = products.filter((p) => p.availablePackages > 0);
-  const deliversToZip = !!zip && farm.delivery.zips.includes(zip);
-  const hasPickups = farm.pickups.length > 0;
+  const deliversToZip =
+    farm.delivery.enabled && !!zip && farm.delivery.zips.includes(zip);
+  const hasPickups = farm.pickupEnabled && farm.pickups.length > 0;
 
-  const nextDelivery = getNextDeliveryDate(farm.delivery.weekdays);
+  const nextDelivery = farm.delivery.nextDate;
   const deliveryMeta = [
     nextDelivery && `Next delivery ${formatDeliveryDate(nextDelivery)}`,
     farm.delivery.fee,
