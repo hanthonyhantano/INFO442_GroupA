@@ -63,7 +63,8 @@ function toProduct(row) {
 }
 
 export default function ProductPage() {
-  const { productId } = useParams();
+  const { productId, cutId } = useParams();
+  const id = productId ?? cutId; 
   const { zip } = useNavigation();
   const { items: cartItems, addToCart } = useCart();
 
@@ -86,19 +87,19 @@ export default function ProductPage() {
 
   // Load this cut (the URL id is cuts.id) and three others for "If you like this, try"
   useEffect(() => {
-    const id = Number(productId);
+    const cutIdNum = Number(id);
     let cancelled = false;
     setProduct(undefined);
     setRelated([]);
 
-    if (!Number.isInteger(id)) {
+    if (!Number.isInteger(cutIdNum)) {
       setProduct(null);
       return;
     }
 
     Promise.all([
-      supabase.from("cuts").select(CUT_COLUMNS).eq("id", id).maybeSingle(),
-      supabase.from("cuts").select(CUT_COLUMNS).neq("id", id).order("id").limit(3),
+      supabase.from("cuts").select(CUT_COLUMNS).eq("id", cutIdNum).maybeSingle(),
+      supabase.from("cuts").select(CUT_COLUMNS).neq("id", cutIdNum).order("id").limit(3),
     ]).then(([main, others]) => {
       if (cancelled) return;
       if (main.error) console.error("Loading cut failed:", main.error);
@@ -111,14 +112,14 @@ export default function ProductPage() {
     });
 
     return () => { cancelled = true; };
-  }, [productId]);
+  }, [id]);
 
   useEffect(() => {
     setQty(1);
     setMethod("Braise");
     setAddStatus("idle");
     setRelatedStatus({});
-  }, [productId]);
+  }, [id]);
 
   // Clear the "Added" confirmation after a few seconds
   useEffect(() => {

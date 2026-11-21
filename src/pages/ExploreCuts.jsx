@@ -24,7 +24,7 @@ function StockItem({ cut }) {
   return (
     <li>
       <div>
-        <Link to={"/shop/" + cut.id}>{cut.name}</Link>
+        <Link to={`/shop/product/${cut.id}`}>{cut.name}</Link>
         <small>
           {cut.farm.name} · ${Number(cut.price_per_lb).toFixed(2)}/lb
         </small>
