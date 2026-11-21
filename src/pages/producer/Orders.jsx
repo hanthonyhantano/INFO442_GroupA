@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import * as store from './OrdersStore';
+import * as store from '../../lib/OrdersStore';
 const COLUMNS = [
   { status: 'new', title: 'New', dropLabel: '' },
   { status: 'confirmed', title: 'Confirmed', dropLabel: 'Drop to confirm' },
