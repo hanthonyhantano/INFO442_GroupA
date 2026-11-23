@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { groupItems, money, validateCheckout } from "./checkout";
+import { deliveryFeeFor, estimate, groupItems, money, validateCheckout } from "./checkout";
 import "./checkout.css";
 
 // submitOrder must atomically validate current prices/stock and save one request
@@ -26,21 +26,28 @@ export default function CheckoutPage({
   const [pending, setPending] = useState(null);
   const lock = useRef(false);
   const [fulfillment, setFulfillment] = useState({});
-  const groups = groupItems(items);
-  const total = groups.reduce((sum, group) => sum + group.subtotal, 0);
+  const groups = groupItems(items).map((group) => {
+    const option = options.find((farm) => String(farm.id) === String(group.farm.id));
+    const choice = fulfillment[group.farm.id];
+    const deliveryFee = choice?.method === "delivery" ? deliveryFeeFor(option, contact.zip) : null;
+    return { ...group, option, choice, deliveryFee };
+  });
+  const subtotal = groups.reduce((sum, group) => sum + group.subtotal, 0);
+  const deliveryFees = groups.reduce((sum, group) => sum + (group.deliveryFee ?? 0), 0);
 
   async function submit(event) {
     event.preventDefault();
     if (lock.current || !submitOrder) return;
     const found = pending ? {} : validateCheckout(contact, items);
     for (const group of pending ? [] : groups) {
-      const option = options.find(
-        (farm) => String(farm.id) === String(group.farm.id),
-      );
-      const choice = fulfillment[group.farm.id];
+      const { option, choice, deliveryFee } = group;
       if (
         options.length &&
-        (!choice || (choice.method === "pickup" && !choice.pickupId))
+        (!choice?.method ||
+          (choice.method === "pickup" &&
+            (!option?.pickup_enabled || !option.pickup_locations.some(
+              (place) => String(place.id) === String(choice.pickupId),
+            ))))
       )
         found.cart = "Choose fulfillment for each farm.";
       if (
@@ -48,9 +55,8 @@ export default function CheckoutPage({
         (!contact.address.trim() ||
           !/^\d{5}$/.test(contact.zip) ||
           group.subtotal < Number(option?.delivery_minimum ?? 0) ||
-          !option?.delivery_zones.some((zone) =>
-            zone.zip_codes.includes(contact.zip),
-          ))
+          !option?.delivery_enabled ||
+          deliveryFee === null)
       )
         found.cart = "Check the delivery address, ZIP, and farm minimum.";
     }
@@ -71,6 +77,7 @@ export default function CheckoutPage({
         items: items.map((item) => ({
           cartItemId: item.id,
           cutId: item.cutId,
+          packSizeLb: item.lbsPerPackage,
           quantity: item.quantity,
         })),
       };
@@ -155,10 +162,7 @@ export default function CheckoutPage({
           ))}
           <h2>Pickup or delivery</h2>
           {groups.map((group) => {
-            const option = options.find(
-              (farm) => String(farm.id) === String(group.farm.id),
-            );
-            const choice = fulfillment[group.farm.id] ?? {};
+            const { option, choice = {}, deliveryFee } = group;
             const change = (value) =>
               setFulfillment({
                 ...fulfillment,
@@ -195,7 +199,7 @@ export default function CheckoutPage({
                       }
                     >
                       <option value="">Choose location</option>
-                      {option.pickup_locations.map((place) => (
+                      {(option?.pickup_locations ?? []).map((place) => (
                         <option key={place.id} value={place.id}>
                           {place.name} — {place.address}
                         </option>
@@ -206,26 +210,14 @@ export default function CheckoutPage({
                 {choice.method === "delivery" && (
                   <p>
                     Delivery minimum:{" "}
-                    {money(Number(option.delivery_minimum ?? 0))}. Delivery fee:{" "}
-                    {option.delivery_zones.find((zone) =>
-                      zone.zip_codes.includes(contact.zip),
-                    )
-                      ? money(
-                          Number(
-                            option.delivery_zones.find((zone) =>
-                              zone.zip_codes.includes(contact.zip),
-                            ).fee,
-                          ),
-                        )
-                      : "Enter an eligible ZIP"}
+                    {money(Number(option?.delivery_minimum ?? 0))}. Delivery fee:{" "}
+                    {deliveryFee === null ? "Enter an eligible ZIP" : money(deliveryFee)}
                   </p>
                 )}
               </fieldset>
             );
           })}
-          {Object.values(fulfillment).some(
-            (choice) => choice.method === "delivery",
-          ) && (
+          {groups.some(({ choice }) => choice?.method === "delivery") && (
             <>
               <label>
                 Delivery address
@@ -291,14 +283,15 @@ export default function CheckoutPage({
               <ul>
                 {group.items.map((item) => (
                   <li key={item.id}>
-                    {item.name} × {item.quantity}
+                    {item.name} · {item.lbsPerPackage} lb/package × {item.quantity} — {money(estimate(item))}
                   </li>
                 ))}
               </ul>
               <p>Estimated subtotal: {money(group.subtotal)}</p>
+              {group.deliveryFee !== null && <p>Delivery: {money(group.deliveryFee)}</p>}
             </section>
           ))}
-          <strong>Estimated total: {money(total)}</strong>
+          <strong>Estimated total: {money(subtotal + deliveryFees)}</strong>
         </aside>
       </div>
     </section>

@@ -127,7 +127,7 @@ async function fetchFarm(id) {
       .maybeSingle(),
     supabase
       .from("cuts")
-      .select("id, name, photo, price_per_pound, pounds_per_package, packages_on_hand, is_live")
+      .select("id, name, photo, price_per_pound, pounds_per_package, packages_on_hand, held, is_live")
       .eq("farm_id", id)
       .order("name"),
   ]);

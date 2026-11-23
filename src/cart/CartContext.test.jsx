@@ -3,15 +3,19 @@ import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { CartProvider, useCart } from "./CartContext";
 
-const db = vi.hoisted(() => ({ rows: [], updates: [], deletes: [], selects: [] }));
+const db = vi.hoisted(() => ({ rows: [], stock: [], updates: [], deletes: [], selects: [] }));
 vi.mock("../lib/supabase", () => ({
   supabase: {
     auth: { getSession: async () => ({ data: { session: { user: { id: "guest" } } } }) },
-    from: () => {
+    from: (table) => {
       const query = {
         select: (columns) => { db.selects.push(columns); return query; },
         eq: () => query,
-        in: (column, ids) => { db.deletes.push(ids); return query; },
+        in: (column, ids) => {
+          if (table === "cut_stock") return Promise.resolve({ data: db.stock });
+          db.deletes.push(ids);
+          return query;
+        },
         update: (values) => { db.updates.push(values); return query; },
         delete: () => query,
         maybeSingle: async () => ({ data: { id: 1 } }),
@@ -30,6 +34,7 @@ vi.mock("../lib/supabase", () => ({
 
 beforeEach(() => {
   db.rows = [];
+  db.stock = [];
   db.updates = [];
   db.deletes = [];
   db.selects = [];
@@ -45,6 +50,7 @@ function Cart() {
       {items.map((item) => (
         <div key={item.id}>
           <p>{item.quantity} requested / {item.available} available</p>
+          <p>{item.lbsPerPackage} lb/package</p>
           <button onClick={() => increase(item.id)}>Increase</button>
         </div>
       ))}
@@ -90,4 +96,18 @@ it("treats null held stock as zero", async () => {
   render(<CartProvider><Cart /></CartProvider>);
   await screen.findByText("4 requested / 5 available");
   expect(db.updates).toEqual([]);
+});
+
+it("keeps selected sizes and reconciles both rows against shared reserved stock", async () => {
+  db.rows = [
+    { ...row(1), quantity: 2, pack_size_lb: 1.5 },
+    { ...row(1), id: 12, quantity: 2, pack_size_lb: 3 },
+  ];
+  db.stock = [{ id: 22, reserved: 2 }];
+  render(<CartProvider><Cart /></CartProvider>);
+  await screen.findByText("2 requested / 2 available");
+  expect(screen.getByText("1 requested / 1 available")).toBeTruthy();
+  expect(screen.getByText("1.5 lb/package")).toBeTruthy();
+  expect(screen.getByText("3 lb/package")).toBeTruthy();
+  expect(db.updates).toEqual([{ quantity: 1 }]);
 });

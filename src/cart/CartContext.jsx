@@ -19,10 +19,12 @@ const CART_ITEM_SELECT = `
 `;
 
 // Match checkout by excluding stock already held for orders.
-export const stockFor = (cut) =>
-  cut.is_live ? Math.max((cut.packages_on_hand ?? 0) - (cut.held ?? 0), 0) : 0;
+export const stockFor = (cut, reserved = 0) =>
+  cut.is_live
+    ? Math.max((cut.packages_on_hand ?? 0) - Math.max(cut.held ?? 0, reserved), 0)
+    : 0;
 
-function toCartItem(row) {
+function toCartItem(row, reserved) {
   const { cut } = row;
   const farm = cut.farm;
   return {
@@ -36,7 +38,7 @@ function toCartItem(row) {
     lbsPerPackage: Number(row.pack_size_lb ?? cut.pounds_per_package),
     quantity: row.quantity,
     // Packages of this cut in stock, shared by every cart row for the cut.
-    stock: stockFor(cut),
+    stock: stockFor(cut, reserved),
     farm: {
       id: farm.id,
       name: farm.name,
@@ -172,11 +174,21 @@ export function CartProvider({ children }) {
       .order("created_at");
     if (loadError) throw loadError;
 
+    const cutIds = [...new Set(data.map(({ cut }) => cut.id))];
+    const reservedByCut = new Map();
+    if (cutIds.length) {
+      const { data: stock, error: stockError } = await supabase
+        .from("cut_stock")
+        .select("id, reserved")
+        .in("id", cutIds);
+      if (stockError) throw stockError;
+      for (const row of stock) reservedByCut.set(row.id, row.reserved ?? 0);
+    }
     const { kept, notices: newNotices, toUpdate, toDelete } = reconcile(
-      data.map(toCartItem)
+      data.map((row) => toCartItem(row, reservedByCut.get(row.cut.id)))
     );
 
-    await Promise.all([
+    const writes = await Promise.all([
       toDelete.length
         ? supabase.from("cart_items").delete().in("id", toDelete)
         : null,
@@ -188,9 +200,13 @@ export function CartProvider({ children }) {
       ),
     ]);
 
+    const failedWrite = writes.find((write) => write?.error);
+    if (failedWrite) throw failedWrite.error;
+
     // CI16 – everything on the page is derived from `items`
     itemsRef.current = kept;
     setItems(kept);
+    setError(null);
     if (newNotices.length) setNotices((prev) => [...prev, ...newNotices]);
   }, []);
 

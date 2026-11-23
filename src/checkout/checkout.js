@@ -13,6 +13,13 @@ export function groupItems(items) {
   }
   return [...groups.values()];
 }
+export function deliveryFeeFor(option, zip) {
+  const fees = (option?.delivery_zones ?? [])
+    .filter((zone) => zone.zip_codes?.includes(zip) && zone.fee != null)
+    .map((zone) => Number(zone.fee));
+  return fees.length ? Math.min(...fees) : null;
+}
+
 export function validateCheckout(contact, items) {
   const errors = {};
   if (!contact.name.trim()) errors.name = "Enter your full name.";

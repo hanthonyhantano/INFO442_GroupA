@@ -166,3 +166,49 @@ it("recovers the same request even if realtime clears the cart after a lost resp
   await screen.findByRole("heading", { name: "Request sent" });
   expect(submit.mock.calls[1][0]).toBe(submit.mock.calls[0][0]);
 });
+
+it("shows both selected sizes and the lowest matching delivery fee through confirmation", async () => {
+  const cartItems = [
+    { ...items[0], lbsPerPackage: 1.5 },
+    { ...items[0], id: 2, quantity: 1, lbsPerPackage: 3 },
+  ];
+  const submit = vi.fn().mockResolvedValue({
+    orders: [{
+      id: 1, orderNumber: "CC-123", farmName: "Test farm", method: "delivery",
+      estimatedTotal: 65, deliveryFee: 5,
+      items: cartItems.map((item) => ({
+        ...item, cartItemId: item.id, estimatedTotal: 30,
+      })),
+    }],
+  });
+  mount(submit, {
+    items: cartItems,
+    options: [{
+      ...options[0], delivery_minimum: 50,
+      delivery_zones: [{ zip_codes: ["98105"], fee: 10 }, ...options[0].delivery_zones],
+    }],
+  });
+  fillContact();
+  fireEvent.change(screen.getByLabelText("Fulfillment method"), {
+    target: { value: "delivery" },
+  });
+  fireEvent.change(screen.getByLabelText("Delivery address"), {
+    target: { value: "123 Test Street" },
+  });
+  fireEvent.change(screen.getByLabelText("ZIP code"), { target: { value: "98105" } });
+  expect(screen.getByText("Estimated total: $65.00")).toBeTruthy();
+  const smallLine = "Chuck roast · 1.5 lb/package × 2 — $30.00";
+  const largeLine = "Chuck roast · 3 lb/package × 1 — $30.00";
+  expect(screen.getByText(smallLine)).toBeTruthy();
+  expect(screen.getByText(largeLine)).toBeTruthy();
+  fireEvent.click(screen.getByRole("button", { name: "Send order request" }));
+  await screen.findByRole("heading", { name: "Request sent" });
+  expect(submit.mock.calls[0][0].items).toEqual([
+    { cartItemId: 1, cutId: 2, quantity: 2, packSizeLb: 1.5 },
+    { cartItemId: 2, cutId: 2, quantity: 1, packSizeLb: 3 },
+  ]);
+  expect(screen.getByText("Request number: CC-123")).toBeTruthy();
+  expect(screen.getByText("Estimated total: $65.00")).toBeTruthy();
+  expect(screen.getByText(smallLine)).toBeTruthy();
+  expect(screen.getByText(largeLine)).toBeTruthy();
+});

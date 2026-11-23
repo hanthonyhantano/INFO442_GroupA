@@ -1,23 +1,54 @@
-# Guest checkout integration
+# Guest checkout setup
 
-This branch is based on Hannah's `cart` branch. Keep its CartProvider when merging.
+Use a development Supabase project with the cart and producer order schema installed.
+Set `VITE_SUPABASE_URL` and the project's publishable key
+(`VITE_SUPABASE_ANON_KEY`) in the ignored `.env.local`, and enable anonymous sign-in.
+The browser uses the guest's Supabase session. Keep administrative keys out of Vite.
 
-Before testing real orders, have the database owner review and apply
-`supabase/migrations/20261115_guest_checkout.sql` in a development Supabase project.
-The function uses the observed orders/order_items column names; table types,
-constraints, and existing stock triggers still need verification in that project.
-It assumes numeric cart/cut/location IDs, writable cuts.held, status `new`, and
-text delivery addresses/order numbers. Do not apply blindly to production.
+Before applying SQL, confirm the cart has its guest ownership policies, the
+producer schema includes `order_items.reserved_quantity`, and the `cut_stock`
+view counts new orders' reserved quantities. Check the deployed definitions:
 
-Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in ignored .env.local. Enable
-anonymous sign-in for Hannah's cart. Never put a service-role key in Vite.
+```sql
+select indexdef from pg_indexes
+where schemaname = 'public' and tablename in ('cart_items', 'order_items');
 
-Test with disposable inventory: add items, choose a fulfillment method for each
-farm, submit, and verify one order per farm plus its order_items. Retry the same
-request ID and confirm no duplicate orders. Verify insufficient stock rolls back
-all orders and that another user cannot submit this user's cart. Confirm held
-stock and cart clearing match the team's existing triggers.
+select pg_get_viewdef('public.cut_stock'::regclass, true);
 
-Until the SQL is installed, submitting shows a setup error and never a successful
-confirmation. No payments or confirmation emails are implemented. Confirmation
-means the request was saved, not that a producer accepted it.
+select to_regprocedure('public.submit_guest_checkout(jsonb)')
+  as installed_checkout_function;
+```
+
+Order items must allow separate lines for the same cut within one order.
+Confirm that the order number and delivery address columns accept text of the
+length used by checkout, and check the existing order triggers and producer
+order functions. Public read access confirmed `pack_size_lb` exists, but did
+not establish the installed indexes, triggers, or checkout function.
+
+Apply these files in this order in the development project:
+
+1. `supabase/migrations/20261114_cart_package_sizes.sql` backfills legacy cart
+   rows from their cut's default weight, removes legacy uniqueness on
+   `(cart_id, cut_id)`, and installs the three-column unique key.
+2. `supabase/migrations/20261115_guest_checkout.sql` creates the private
+   request journal and installs the package-size-aware checkout function.
+   If the earlier draft was applied manually, run this updated file to replace
+   that function. The function retains receipts for existing request IDs.
+
+Test two sizes of one cut, with less stock available than the raw on-hand count.
+The cart and checkout subtract the larger of `cuts.held` and
+`cut_stock.reserved`, treating the two fields as overlapping counters.
+This avoids double-subtracting when they represent the same holds.
+The shared project showed differences between these counts on five cuts.
+Confirm their meaning with the database owner before rolling out to shared
+Supabase, especially if the two fields track independent reservations.
+
+With disposable inventory, verify both lines and the selected weight on each
+saved order item, confirm `cut_stock.reserved` increases, and check that a
+new request is visible to the producer. Try a rejected delivery or pickup
+choice and submit a correction. Retrying the same request ID should return
+the same receipt without writing more orders. A second shopper competing for
+the last packages should be rejected when there is insufficient stock.
+
+The flow requests orders. The confirmation shows estimated prices and does
+not collect payments or send email.

@@ -12,4 +12,4 @@
 .checkout-page [aria-invalid="true"] { border-color: #a32020; }
 @media(max-width: 760px) { .checkout-layout { grid-template-columns: 1fr; } .checkout-page h1 { font-size: 32px; } }
 .checkout-page select { width: 100%; padding: 12px; border: 1px solid #cfcfcf; border-radius: 6px; font: inherit; background: white; }
-.checkout-page fieldset { margin: 20px 0; padding: 16px; border: 1px solid #e0e0de; border-radius: 8px; }
+.checkout-page fieldset { min-width: 0; margin: 20px 0; padding: 16px; border: 1px solid #e0e0de; border-radius: 8px; }

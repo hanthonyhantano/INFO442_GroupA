@@ -21,7 +21,7 @@ const money = (n) => `$${n.toFixed(2)}`;
 // Columns the page needs from Supabase, with the farm joined in via cuts.farm_id.
 const CUT_COLUMNS = `
   id, name, description, photo, cooking_tags,
-  price_per_pound, pounds_per_package, packages_on_hand, is_live,
+  price_per_pound, pounds_per_package, packages_on_hand, held, is_live,
   farm:farms ( id, name, town, state, logo )
 `;
 

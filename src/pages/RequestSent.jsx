@@ -23,7 +23,17 @@ export default function RequestSent() {
       {receipt.orders.map((order) => (
         <section className="checkout-summary" key={order.id}>
           <h2>{order.farmName}</h2>
-          <p>Request number: {order.id}</p>
+          <p>Request number: {order.orderNumber ?? order.id}</p>
+          {order.items?.length > 0 && (
+            <ul>
+              {order.items.map((item) => (
+                <li key={item.cartItemId}>
+                  {item.name} · {item.lbsPerPackage} lb/package × {item.quantity} — {money(item.estimatedTotal)}
+                </li>
+              ))}
+            </ul>
+          )}
+          {order.method === "delivery" && <p>Delivery: {money(order.deliveryFee)}</p>}
           <p>Estimated total: {money(order.estimatedTotal)}</p>
         </section>
       ))}
