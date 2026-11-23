@@ -161,3 +161,6 @@ export function visibleCatalog(data, zip) {
     .slice(0, 4);
   return { farms: nearest, items, featured };
 }
+
+// The producer demo and the shopper catalogue start with the same ranch.
+export const previewRanch = farms[0];
