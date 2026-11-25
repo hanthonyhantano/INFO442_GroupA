@@ -5,13 +5,8 @@ import { contentFor } from "../lib/products";
 import CowDiagram from "../discovery/CowDiagram";
 import { supabase } from "../lib/supabase";
 import { useCart, stockFor } from "../cart/CartContext";
-
-// Local farm logos, used when a farm row has no logo in Supabase (same fallback as FarmPage).
-import farm1 from "../assets/farm/farm1.jpg";
-import farm2 from "../assets/farm/farm2.jpg";
-import farm3 from "../assets/farm/farm3.jpg";
-import farm4 from "../assets/farm/farm4.jpg";
-const LOCAL_LOGOS = { 1: farm1, 2: farm2, 3: farm3, 4: farm4 };
+// Farm logos come from the Supabase "farm_photos" storage bucket (same as FarmPage).
+import { storageUrl, fallbackFarmLogo } from "../lib/farmPhotos";
 
 // Makes an <img> fill whatever box its class already sizes.
 const fill = { width: "100%", height: "100%", objectFit: "cover", display: "block", borderRadius: "inherit" };
@@ -47,7 +42,7 @@ function toProduct(row) {
     blurb: row.description || content.blurb,
     tags: row.cooking_tags?.length ? row.cooking_tags : content.tags,
     // Local assets/meat image first (these worked before), then Supabase if it's a real URL
-    photoUrl: content.photoUrl || asUrl(row.photo),
+    photoUrl: storageUrl(row.photo, "produtcut-photos") || content.photoUrl,
     pricePerLb: Number(row.price_per_pound) || 0,
     // Same stock rule as the cart (CartContext stockFor)
     inStock: stockFor(row),
@@ -57,7 +52,7 @@ function toProduct(row) {
       id: farm.id ?? null,
       name: farm.name ?? "a local farm",
       town: [farm.town, farm.state].filter(Boolean).join(", "),
-      logo: asUrl(farm.logo) || LOCAL_LOGOS[farm.id] || null,
+      logo: storageUrl(farm.logo) || fallbackFarmLogo(farm.id),
     },
   };
 }

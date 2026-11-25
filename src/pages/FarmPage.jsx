@@ -4,16 +4,8 @@ import { useNavigation } from "../navigation/useNavigation";
 import { contentFor } from "../lib/products";
 import { supabase } from "../lib/supabase";
 import { stockFor } from "../cart/CartContext";
-
-import farm1 from "../assets/farm/farm1.jpg";
-import farm2 from "../assets/farm/farm2.jpg";
-import farm3 from "../assets/farm/farm3.jpg";
-import farm4 from "../assets/farm/farm4.jpg";
-import farm7 from "../assets/farm/farm7.jpg";
-
-// Local images, used when a farm has no cover_photo / logo URL in Supabase.
-const DEFAULT_COVER = farm7;
-const LOCAL_LOGOS = { 1: farm1, 2: farm2, 3: farm3, 4: farm4 }; 
+// Farm images come from the Supabase "farm_photos" storage bucket.
+import { storageUrl, fallbackFarmLogo, fallbackFarmCover } from "../lib/farmPhotos";
 
 // Only use a Supabase image value if it's a full URL the browser can load
 const asUrl = (v) =>
@@ -72,14 +64,14 @@ function mapFarmRow(row) {
   return {
     id: row.id,
     name: row.name,
-    coverUrl: asUrl(row.cover_photo) || DEFAULT_COVER,
-    logoUrl: asUrl(row.logo) || LOCAL_LOGOS[row.id] || null,
+    coverUrl: storageUrl(row.cover_photo) || fallbackFarmCover(),
+    logoUrl: storageUrl(row.logo) || fallbackFarmLogo(row.id),
     town: [row.town, row.state].filter(Boolean).join(", "),
     owners: row.owner_names ?? "",
     founded: row.year_founded ?? null,
     story: row.story || row.short_description || "",
     tags: row.practices ?? [],
-    photos: (row.photos ?? []).map(asUrl).filter(Boolean),
+    photos: (row.photos ?? []).map((p) => storageUrl(p)).filter(Boolean),
     delivery: {
       enabled: row.delivery_enabled !== false,
       zips: row.delivery_zips ?? [],
@@ -109,7 +101,7 @@ function mapCutRow(row) {
   return {
     id: row.id, // cuts.id, the id the product page and cart use
     name: row.name,
-    photoUrl: content.photoUrl || asUrl(row.photo),
+    photoUrl: storageUrl(row.photo, "produtcut-photos") || content.photoUrl,
     pricePerLb: Number(row.price_per_pound) || 0,
     defaultSize: Number(row.pounds_per_package) || content.defaultSize,
     availablePackages: stockFor(row),

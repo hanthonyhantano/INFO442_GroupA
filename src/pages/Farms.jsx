@@ -8,6 +8,7 @@ import {
 } from "@react-google-maps/api";
 import { useNavigation } from "../navigation/useNavigation";
 import { fetchFarmList as fetchFarms, fetchZipCenter, normalizeZip } from "../lib/farmsApi";
+import { storageUrl, fallbackFarmLogo } from "../lib/farmPhotos";
 
 const DEFAULT_CENTER = { lat: 47.655, lng: -122.303 };
 const METERS_PER_MILE = 1609.34;
@@ -65,7 +66,7 @@ function toLatLng(center) {
   return Number.isFinite(lat) && Number.isFinite(lng) ? { lat, lng } : null;
 }
 
-export default function FarmsPage() {
+export default function Farms() {
   const { zip } = useNavigation();
 
   const { isLoaded, loadError } = useJsApiLoader({
@@ -292,7 +293,9 @@ export default function FarmsPage() {
               </div>
             ) : (
               <ul className="farms-list">
-                {results.map((farm) => (
+                {results.map((farm) => {
+                  const thumb = storageUrl(farm.photo) || fallbackFarmLogo(farm.id);
+                  return (
                   <li key={farm.id}>
                     <Link
                       to={`/farms/${farm.id}`}
@@ -303,8 +306,8 @@ export default function FarmsPage() {
                       onFocus={() => setHoveredId(farm.id)}
                       onBlur={() => setHoveredId(null)}
                     >
-                      {farm.photo ? (
-                        <img className="farms-row__thumb" src={farm.photo} alt="" />
+                      {thumb ? (
+                        <img className="farms-row__thumb" src={thumb} alt="" style={{ objectFit: "cover" }} />
                       ) : (
                         <div className="farm-placeholder farms-row__thumb" />
                       )}
@@ -321,7 +324,8 @@ export default function FarmsPage() {
                       <span className="farms-row__chevron" aria-hidden="true">›</span>
                     </Link>
                   </li>
-                ))}
+                  );
+                })}
               </ul>
             ))}
         </section>
