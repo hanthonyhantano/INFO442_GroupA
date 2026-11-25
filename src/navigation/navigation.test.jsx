@@ -5,6 +5,7 @@ import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, useNavigate } from 'react-router-dom'
 import App from '../App'
+import ShopperLayout from '../components/ShopperLayout'
 import { NavigationProvider } from './NavigationProvider'
 import { useNavigation } from './useNavigation'
 import { readZip, saveZip, visibleCount } from './navigation'
@@ -56,6 +57,12 @@ describe('shopper navigation', () => {
     await user.click(screen.getByRole('button', { name: /02108/ }))
     await user.click(screen.getByRole('button', { name: 'Clear' }))
     expect(localStorage.getItem('catcow.deliveryZip')).toBeNull()
+  })
+  it.each([0, 4])('shows the live package count of %i when a saved count differs', count => {
+    render(<MemoryRouter><NavigationProvider cartPackageCount={3}>
+      <ShopperLayout livePackageCount={count} />
+    </NavigationProvider></MemoryRouter>)
+    expect(screen.getByRole('link', { name: `Cart, ${count} packages` })).toBeTruthy()
   })
   it('shows supplied cart packages and closes the mobile menu after navigation', async () => {
     const user = userEvent.setup(); mount('/', { cartPackageCount: 3 })
