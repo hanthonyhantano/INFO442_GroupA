@@ -152,6 +152,10 @@ export function reviewRows(records, mapping, inventory = null, categories = CATE
       ...row,
       errors,
       existingId: matches[0]?.id ?? null,
+      previous: matches.length === 1 ? {
+        onHand: matches[0].onHand, pricePerPound: matches[0].pricePerPound,
+        poundsPerPackage: matches[0].poundsPerPackage, part: matches[0].part,
+      } : null,
       status:
         inventory === null
           ? 'Inventory check pending'
@@ -171,9 +175,10 @@ export function importPlan(rows, requestId) {
     throw new Error('Fix invalid rows before importing.')
   return {
     requestId,
-    cuts: rows.map(({ values, existingId, part, rowNumber }) => ({
+    cuts: rows.map(({ values, existingId, previous, part, rowNumber }) => ({
       rowNumber,
       id: existingId,
+      previous,
       name: values.name.trim(),
       part,
       onHand: Number(values.onHand),

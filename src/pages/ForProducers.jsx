@@ -1,3 +1,10 @@
+import { Link } from 'react-router-dom'
+
 export default function ForProducers() {
-  return <h1>ForProducers</h1>
+  return (
+    <section className="dc">
+      <h1>For producers</h1>
+      <Link to="/sign-in">Sign in to your farm</Link>
+    </section>
+  )
 }

@@ -5,6 +5,7 @@ import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, useNavigate } from 'react-router-dom'
 import App from '../App'
+import ShopperLayout from '../components/ShopperLayout'
 import { NavigationProvider } from './NavigationProvider'
 import { useNavigation } from './useNavigation'
 import { readZip, saveZip, visibleCount } from './navigation'
@@ -25,7 +26,7 @@ function ZipConsumer() { const { zip } = useNavigation(); return <output aria-la
 describe('shopper navigation', () => {
   it('links to each existing destination and marks only the selected section', async () => {
     const user = userEvent.setup(); mount()
-    for (const [label, heading] of [['Shop','Shop beef'], ['Explore Cuts','Pick a part of the cow.'], ['Farms',/^Farms/], ['Our Mission','Make the whole cow valuable.'], ['For Producers','ForProducers']]) {
+    for (const [label, heading] of [['Shop','Shop beef'], ['Explore Cuts','Pick a part of the cow.'], ['Farms',/^Farms/], ['Our Mission','Make the whole cow valuable.'], ['For Producers','For producers']]) {
       await user.click(screen.getByRole('link', { name: label, exact: true }))
       expect(screen.getByRole('heading', { name: heading })).toBeTruthy()
       expect(screen.getByRole('link', { name: label, exact: true }).getAttribute('aria-current')).toBe('page')
@@ -57,6 +58,12 @@ describe('shopper navigation', () => {
     await user.click(screen.getByRole('button', { name: 'Clear' }))
     expect(localStorage.getItem('catcow.deliveryZip')).toBeNull()
   })
+  it.each([0, 4])('shows the live package count of %i when a saved count differs', count => {
+    render(<MemoryRouter><NavigationProvider cartPackageCount={3}>
+      <ShopperLayout livePackageCount={count} />
+    </NavigationProvider></MemoryRouter>)
+    expect(screen.getByRole('link', { name: `Cart, ${count} packages` })).toBeTruthy()
+  })
   it('shows supplied cart packages and closes the mobile menu after navigation', async () => {
     const user = userEvent.setup(); mount('/', { cartPackageCount: 3 })
     expect(screen.getByRole('link', { name: 'Cart, 3 packages' })).toBeTruthy()
@@ -84,7 +91,7 @@ describe('producer navigation', () => {
   })
   it('redirects a confirmed signed-out session', () => {
     mount('/producer/orders', { session: null })
-    expect(screen.getByRole('heading', { name: 'SignIn' })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'Producer sign in' })).toBeTruthy()
     expect(screen.queryByRole('navigation', { name: 'Producer' })).toBeNull()
   })
   it('closes account options on Escape, outside click, and navigation', async () => {
@@ -104,7 +111,7 @@ describe('producer navigation', () => {
     await user.click(screen.getByRole('button', { name: 'Log out' }))
     expect(screen.getByRole('alert').textContent).toContain('Could not log out')
     await user.click(screen.getByRole('button', { name: 'Log out' }))
-    await waitFor(() => expect(screen.getByRole('heading', { name: 'SignIn' })).toBeTruthy())
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Producer sign in' })).toBeTruthy())
     expect(signOut).toHaveBeenCalledTimes(2)
   })
   it('closes the mobile menu after a selection', async () => {

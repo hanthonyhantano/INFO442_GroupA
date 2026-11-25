@@ -17,8 +17,8 @@ import { readImportSession, saveImportSession } from './session'
 
 // Integration contract: inventory uses Selene's normalized cut shape.
 // onImport(plan) resolves only after an atomic, idempotent save succeeds.
-export default function ImportPage({ inventory = null, onImport, categories = CATEGORIES }) {
-  const [restored] = useState(readImportSession)
+export default function ImportPage({ inventory = null, onImport, categories = CATEGORIES, batches, scope = '', onSaved }) {
+  const [restored] = useState(() => readImportSession(scope))
   const [storageError, setStorageError] = useState(false)
   const [step, setStep] = useState(restored?.step ?? 0)
   const [file, setFile] = useState(restored?.file ?? null)
@@ -27,6 +27,7 @@ export default function ImportPage({ inventory = null, onImport, categories = CA
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const [saved, setSaved] = useState(restored?.saved ?? 0)
+  const [batchId, setBatchId] = useState(restored?.batchId ?? '')
   const request = useRef(0)
   const saveLock = useRef(false)
   const [transaction, setTransaction] = useState(restored?.transaction ?? null)
@@ -35,11 +36,12 @@ export default function ImportPage({ inventory = null, onImport, categories = CA
   const invalid = rows.length - ready.length
   const connected = inventory !== null && typeof onImport === 'function'
 
+  const needsBatch = batches && ready.some(row => row.existingId === null) && !batchId
   useEffect(() => {
     // Report whether synchronization with browser storage succeeded.
     // eslint-disable-next-line react/set-state-in-effect
-    setStorageError(!saveImportSession({ step, file, mapping, skipErrors, saved, transaction }))
-  }, [step, file, mapping, skipErrors, saved, transaction])
+    setStorageError(!saveImportSession({ step, file, mapping, skipErrors, saved, transaction, batchId }, scope))
+  }, [step, file, mapping, skipErrors, saved, transaction, batchId, scope])
 
   async function upload(selected) {
     if (!selected || saveLock.current) return
@@ -85,19 +87,26 @@ export default function ImportPage({ inventory = null, onImport, categories = CA
   }
 
   async function save() {
-    if (saveLock.current || !connected || !ready.length || (invalid && !skipErrors)) return
+    if (saveLock.current || !connected || (!transaction && (!ready.length || needsBatch || (invalid && !skipErrors)))) return
     saveLock.current = true
     setBusy(true)
     setError('')
     try {
       // Lock the reviewed payload after the first attempt. A retry uses the
       // same id and payload even if the server saved before its reply was lost.
-      const plan = transaction ?? importPlan(ready, crypto.randomUUID())
+      const plan = transaction ?? { ...importPlan(ready, crypto.randomUUID()), batchId: batchId || null }
       setTransaction(plan)
       await onImport(plan)
       setSaved(plan.cuts.length)
       setStep(3)
-    } catch {
+      onSaved?.()
+    } catch (failure) {
+      if (failure.rejected) {
+        setTransaction(null)
+        setError(failure.message)
+        onSaved?.()
+        return
+      }
       setError('Something went wrong. Try again')
     } finally {
       saveLock.current = false
@@ -282,6 +291,13 @@ export default function ImportPage({ inventory = null, onImport, categories = CA
             />
             Skip rows that still have errors
           </label>
+          {batches && ready.some(row => row.existingId === null) && <label>Batch for new cuts
+            <select value={batchId} disabled={locked} onChange={e => setBatchId(e.target.value)}>
+              <option value="">Choose batch</option>
+              {batches.map(batch => <option key={batch.id} value={batch.id}>{batch.label}</option>)}
+            </select>
+            {!batches.length && <small>Create a batch before importing new cuts.</small>}
+          </label>}
           {!connected && (
             <p className="csv-notice" role="status">
               File review is available. Saving will be available when your producer inventory is
@@ -304,7 +320,7 @@ export default function ImportPage({ inventory = null, onImport, categories = CA
               ← Column mapping
             </button>
             <button
-              disabled={busy || !connected || !ready.length || Boolean(invalid && !skipErrors)}
+              disabled={busy || !connected || (!transaction && (!ready.length || needsBatch || Boolean(invalid && !skipErrors)))}
               onClick={save}
             >
               {busy

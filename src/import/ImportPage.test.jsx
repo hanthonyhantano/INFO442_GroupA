@@ -109,3 +109,16 @@ it('restores the filename, corrected rows and progress after remounting', async 
   expect(screen.getByLabelText('Row 2 Cut category').getAttribute('aria-invalid')).toBe('false')
   expect(screen.getByText(/cuts.csv/)).toBeTruthy()
 })
+
+it('requires an explicit batch for new cuts and unlocks a definite rejection', async () => {
+  const onImport = vi.fn().mockRejectedValueOnce(Object.assign(new Error('Inventory changed.'), {rejected:true})).mockResolvedValueOnce(1)
+  show({inventory:[], categories:['Chuck'], batches:[{id:42,label:'Fall'}], onImport})
+  await upload()
+  const save = screen.getByRole('button',{name:'Import 1 cuts'})
+  expect(save.disabled).toBe(true)
+  fireEvent.change(screen.getByLabelText('Batch for new cuts'),{target:{value:'42'}})
+  fireEvent.click(save)
+  await screen.findByText('Inventory changed.')
+  expect(screen.getByLabelText('Row 2 Qty').disabled).toBe(false)
+  expect(onImport.mock.calls[0][0].batchId).toBe('42')
+})

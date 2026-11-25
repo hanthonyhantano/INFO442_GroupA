@@ -54,7 +54,7 @@ function CutRow({ cut, selected, onSelect }) {
   )
 }
 
-export default function InventoryPage() {
+export default function InventoryPage({assignedFarmId}) {
   const [farmId, setFarmId] = useState(null)
   const [cuts, setCuts] = useState([])
   const [partOptions, setPartOptions] = useState([])
@@ -72,7 +72,7 @@ export default function InventoryPage() {
 
   useEffect(() => {
     let cancelled = false
-    fetchInventory()
+    fetchInventory(assignedFarmId)
       .then((result) => {
         if (cancelled) return
         setFarmId(result.farmId)
@@ -83,7 +83,7 @@ export default function InventoryPage() {
       })
       .catch(() => { if (!cancelled) setStatus('error') })
     return () => { cancelled = true }
-  }, [])
+  }, [assignedFarmId])
 
   const totals = useMemo(() => headerTotals(cuts), [cuts])
   const counts = useMemo(() => chipCounts(cuts), [cuts])

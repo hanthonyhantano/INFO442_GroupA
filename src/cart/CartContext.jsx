@@ -108,46 +108,36 @@ function reconcile(rawItems) {
   return { kept: withAvailability(kept), notices, toUpdate, toDelete };
 }
 
-// Cached so React StrictMode's double effect doesn't create two
-// anonymous users or two carts.
-let cartIdPromise = null;
+// StrictMode can start two loads. Share only the in-flight work for this user.
+let guestSignIn;
+const pendingCarts = new Map();
 
-function getOrCreateCartId() {
-  if (!cartIdPromise) {
-    cartIdPromise = (async () => {
-      let {
-        data: { session },
-      } = await supabase.auth.getSession();
-
-      if (!session) {
-        const { data, error } = await supabase.auth.signInAnonymously();
-        if (error) throw error;
-        session = data.session;
-      }
-
-      const userId = session.user.id;
-
-      const { data: existing, error: selectError } = await supabase
-        .from("carts")
-        .select("id")
-        .eq("user_id", userId)
-        .maybeSingle();
-      if (selectError) throw selectError;
-      if (existing) return existing.id;
-
-      const { data: created, error: insertError } = await supabase
-        .from("carts")
-        .insert({ user_id: userId })
-        .select("id")
-        .single();
-      if (insertError) throw insertError;
-      return created.id;
-    })().catch((err) => {
-      cartIdPromise = null;
-      throw err;
-    });
+async function getOrCreateCartId() {
+  const {data, error} = await supabase.auth.getSession();
+  if (error) throw error;
+  let userId = data.session?.user.id;
+  if (!userId) {
+    guestSignIn ??= supabase.auth.signInAnonymously().finally(() => { guestSignIn = null; });
+    const guest = await guestSignIn;
+    if (guest.error) throw guest.error;
+    userId = guest.data.session.user.id;
   }
-  return cartIdPromise;
+  if (!pendingCarts.has(userId)) {
+    pendingCarts.set(userId, loadUserCart(userId).finally(() => pendingCarts.delete(userId)));
+  }
+  return pendingCarts.get(userId);
+}
+
+async function loadUserCart(userId) {
+  const selectCart = () => supabase.from("carts").select("id").eq("user_id", userId).maybeSingle();
+  let {data, error} = await selectCart();
+  if (error) throw error;
+  if (data) return data.id;
+  ({data, error} = await supabase.from("carts").insert({user_id: userId}).select("id").single());
+  // A second tab can create the cart between our SELECT and INSERT.
+  if (error?.code === "23505") ({data, error} = await selectCart());
+  if (error || !data) throw error ?? new Error("Could not find your cart.");
+  return data.id;
 }
 
 const CartContext = createContext(null);
