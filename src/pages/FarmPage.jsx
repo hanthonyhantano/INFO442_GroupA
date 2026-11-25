@@ -102,9 +102,22 @@ function mapFarmRow(row) {
   };
 }
 
+async function fetchFarmCuts(farmId) {
+  const result = await supabase.from("cuts")
+    .select("id, name, photo, price_per_pound, pounds_per_package, is_live")
+    .eq("farm_id", farmId)
+    .eq("is_live", true)
+    .order("name");
+  if (result.error) return result;
+  const stock = await loadStock(supabase, result.data.map(row => row.id));
+  return { data: result.data.map(row => ({
+    ...row, availablePackages: availablePackages(row, stock.get(row.id)),
+  })) };
+}
+
 // A Supabase cuts row -> what a product card needs. Same sources as the
 // product page: id/price/stock/weight from Supabase, image local-first.
-function mapCutRow(row, stock) {
+function mapCutRow(row) {
   const content = contentFor(row.name);
   return {
     id: row.id, // cuts.id, the id the product page and cart use
@@ -112,7 +125,7 @@ function mapCutRow(row, stock) {
     photoUrl: content.photoUrl || asUrl(row.photo),
     pricePerLb: Number(row.price_per_pound) || 0,
     defaultSize: Number(row.pounds_per_package) || content.defaultSize,
-    availablePackages: availablePackages(row, stock),
+    availablePackages: row.availablePackages,
   };
 }
 
@@ -125,11 +138,7 @@ async function fetchFarm(id) {
       .select("*, pickups:pickup_locations(*)")
       .eq("id", id)
       .maybeSingle(),
-    supabase
-      .from("cuts")
-      .select("id, name, photo, price_per_pound, pounds_per_package, packages_on_hand, is_live")
-      .eq("farm_id", id)
-      .order("name"),
+    fetchFarmCuts(id),
   ]);
 
   if (farmRes.error) throw farmRes.error;
@@ -137,8 +146,7 @@ async function fetchFarm(id) {
   if (!farmRes.data) return { farm: null, products: [] };
 
   const farm = mapFarmRow(farmRes.data);
-  const stock = await loadStock(supabase, cutsRes.data.map(row => row.id));
-  const products = cutsRes.data.map(row => mapCutRow(row, stock.get(row.id)));
+  const products = (cutsRes.data ?? []).map(mapCutRow);
   return { farm, products };
 }
 
