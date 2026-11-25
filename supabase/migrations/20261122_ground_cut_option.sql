@@ -1,17 +1,9 @@
--- The inventory and batch cut selectors read from cow_parts.
--- Add the option without changing any existing cuts or inventory.
+-- The selectors read cow_parts. Preserve existing Ground or Ground Beef rows.
 begin;
-
-insert into public.cow_parts (name, description, cooking_tags, inventory_group)
-select 'Ground', 'Ground beef for burgers, meatballs, and skillet dishes.',
-       chuck.cooking_tags, chuck.inventory_group
-from public.cow_parts chuck
-where lower(chuck.name) = 'chuck'
-  and not exists (
-    select 1 from public.cow_parts existing
-    where lower(existing.name) in ('ground', 'ground beef')
-  )
-order by chuck.id
-limit 1;
-
+lock table public.cow_parts in share row exclusive mode;
+insert into public.cow_parts (name, description)
+select 'Ground', 'Ground beef for burgers, meatballs, and skillet dishes.'
+where not exists (
+  select 1 from public.cow_parts where lower(trim(name)) in ('ground', 'ground beef')
+);
 commit;
