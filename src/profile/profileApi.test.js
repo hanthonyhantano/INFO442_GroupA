@@ -46,3 +46,9 @@ it('submits the edited profile and loaded revision together and reports a confli
   )
   await expect(saveProfile(draft, false)).rejects.toThrow(/Reload/)
 })
+
+it('identifies an unmapped signed-in account instead of saving its edits to the demo', async () => {
+  supabase.auth.getSession.mockResolvedValue({data:{session:{user:{app_metadata:{}, is_anonymous:false}}}})
+  await expect(loadProfile()).rejects.toMatchObject({code:'NO_FARM'})
+  expect(supabase.from).not.toHaveBeenCalled()
+})

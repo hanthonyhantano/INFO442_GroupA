@@ -13,7 +13,7 @@ declare
   result jsonb;
   weekdays text[] := array['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 begin
-  if auth.uid() is null or farm_key is null or farm_key::text is distinct from profile->>'id' then
+  if auth.uid() is null or coalesce((auth.jwt()->>'is_anonymous')::boolean,false) or farm_key is null or farm_key::text is distinct from profile->>'id' then
     raise exception 'Producer farm assignment required' using errcode='42501';
   end if;
   select profile_version into strict current_version from public.farms where id=farm_key for update;

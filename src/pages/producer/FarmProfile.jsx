@@ -31,8 +31,8 @@ export default function FarmProfile() {
           setError('')
         }
       })
-      .catch(() => {
-        if (current) setError('Could not load the farm profile.')
+      .catch((failure) => {
+        if (current) setError(failure.code === 'NO_FARM' ? failure.message : 'Could not load the farm profile.')
       })
     return () => {
       current = false

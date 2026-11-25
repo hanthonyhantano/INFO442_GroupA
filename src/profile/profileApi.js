@@ -72,7 +72,11 @@ export const readDemoFarm = () => demoRecord()
 export async function loadProfile() {
   const { data, error } = await supabase.auth.getSession()
   if (error) throw error
-  const id = data.session?.user.app_metadata?.farm_id
+  const user = data.session?.user
+  const id = !user?.is_anonymous && user?.app_metadata?.farm_id
+  if (user && !user.is_anonymous && !id) {
+    throw Object.assign(new Error('Your account needs a farm assignment. Ask the project administrator to link your producer account.'), {code:'NO_FARM'})
+  }
   if (!id) return { demo: true, profile: fromRow(await readDemoFarm()) }
   const response = await supabase
     .from('farms')

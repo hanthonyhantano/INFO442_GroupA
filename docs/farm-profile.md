@@ -1,6 +1,6 @@
 # Producer farm profile
 
-Open `/producer/profile`. The team can review the editor without an assigned producer account. The sample uses the existing Lorem Ranch catalog entry and saves in IndexedDB in the current browser and origin. Preview opens the shopper page for the saved version. Other shoppers do not see local sample edits.
+Open `/producer/profile`. The team can review the editor while signed out or using a guest shopper session. The sample uses the existing Lorem Ranch catalog entry and saves in IndexedDB in the current browser and origin. Preview opens the shopper page for the saved version. Other shoppers do not see local sample edits.
 
 ## Connecting an assigned producer
 
@@ -10,3 +10,5 @@ Open `/producer/profile`. The team can review the editor without an assigned pro
 4. Set `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY` in the ignored local environment and restart Vite. With an assigned producer session, save a change, reopen the editor and open Preview. Verify that another producer cannot edit the same farm. The shared project requires team approval before applying the migration or testing writes.
 
 For a local sample-only run with no credentials, use `VITE_SUPABASE_URL=http://127.0.0.1:9 VITE_SUPABASE_ANON_KEY=local-demo npm run dev`. Other routes that need Supabase require the team's normal environment.
+
+The Nov 24 read-only production check found zero mapped non-guest accounts and no profile save function or version column. A signed-in account missing its assignment gets a setup message.
