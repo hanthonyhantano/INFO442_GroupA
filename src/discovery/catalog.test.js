@@ -48,8 +48,8 @@ describe("marketplace selection", () => {
 });
 
 it("adapts actual cut fields and excludes held stock", () => {
-  const cut = catalogCut({ id: 1, farm_id: 2, is_live: true, packages_on_hand: 5, held: 2,
-    price_per_pound: 9, pounds_per_package: 1, cow_parts: { name: "Ground" } });
+  const cut = catalogCut({ id: 1, farm_id: 2, is_live: true, packages_on_hand: 5, held: 5,
+    price_per_pound: 9, pounds_per_package: 1, cow_parts: { name: "Ground" } }, {on_hand: 5, reserved: 2});
   expect(cut).toMatchObject({ available_packages: 3, price_per_lb: 9, cut_category: "Ground", status: "Live" });
   expect(catalogCut({ packages_on_hand: 1, held: 3 }).in_stock).toBe(false);
 });

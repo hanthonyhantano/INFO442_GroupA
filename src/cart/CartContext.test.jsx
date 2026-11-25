@@ -71,10 +71,11 @@ function row(held, isLive = true) {
 }
 
 it("subtracts held stock, saves the lower quantity, and prevents increasing past it", async () => {
-  db.rows = [row(3)];
+  db.rows = [row(0)];
+  db.stock = [{id:22,on_hand:5,reserved:3}];
   render(<CartProvider><Cart /></CartProvider>);
   await screen.findByText("2 requested / 2 available");
-  expect(db.selects.some((columns) => columns.includes("held"))).toBe(true);
+  expect(db.selects.some((columns) => columns.includes("reserved"))).toBe(true);
   expect(db.updates).toEqual([{ quantity: 2 }]);
   fireEvent.click(screen.getByRole("button", { name: "Increase" }));
   expect(db.updates).toHaveLength(1);
@@ -82,7 +83,8 @@ it("subtracts held stock, saves the lower quantity, and prevents increasing past
 
 it.each([[5, true], [6, true], [0, false]])(
   "removes unavailable cuts (held=%s, live=%s)", async (held, isLive) => {
-    db.rows = [row(held, isLive)];
+    db.rows = [row(0, isLive)];
+    db.stock = [{id:22,on_hand:5,reserved:held}];
     render(<CartProvider><Cart /></CartProvider>);
     await screen.findByText("Ready");
     expect(screen.queryByRole("button", { name: "Increase" })).toBeNull();
@@ -91,8 +93,9 @@ it.each([[5, true], [6, true], [0, false]])(
   },
 );
 
-it("treats null held stock as zero", async () => {
-  db.rows = [row(null)];
+it("uses order reservations even when the batch held counter is higher", async () => {
+  db.rows = [row(5)];
+  db.stock = [{id:22,on_hand:5,reserved:0}];
   render(<CartProvider><Cart /></CartProvider>);
   await screen.findByText("4 requested / 5 available");
   expect(db.updates).toEqual([]);
@@ -103,11 +106,20 @@ it("keeps selected sizes and reconciles both rows against shared reserved stock"
     { ...row(1), quantity: 2, pack_size_lb: 1.5 },
     { ...row(1), id: 12, quantity: 2, pack_size_lb: 3 },
   ];
-  db.stock = [{ id: 22, reserved: 2 }];
+  db.stock = [{ id: 22, on_hand: 5, reserved: 2 }];
   render(<CartProvider><Cart /></CartProvider>);
   await screen.findByText("2 requested / 2 available");
   expect(screen.getByText("1 requested / 1 available")).toBeTruthy();
   expect(screen.getByText("1.5 lb/package")).toBeTruthy();
   expect(screen.getByText("3 lb/package")).toBeTruthy();
   expect(db.updates).toEqual([{ quantity: 1 }]);
+});
+
+it("preserves cart rows when the stock view omits a live cut", async () => {
+  db.rows = [row(0)];
+  db.stock = [];
+  render(<CartProvider><Cart /></CartProvider>);
+  await screen.findByText("Ready");
+  expect(db.deletes).toEqual([]);
+  expect(db.updates).toEqual([]);
 });

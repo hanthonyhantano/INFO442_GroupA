@@ -9,22 +9,18 @@ import {
 } from "react";
 import { supabase } from "../lib/supabase";
 
+import { availablePackages, loadStock } from "../lib/cutAvailability";
+
 const CART_ITEM_SELECT = `
   id, quantity, created_at, pack_size_lb,
   cut:cuts (
     id, name, photo, price_per_pound, pounds_per_package,
-    packages_on_hand, held, is_live,
+    is_live,
     farm:farms ( id, name, town, state, delivery_enabled, delivery_minimum )
   )
 `;
 
-// Match checkout by excluding stock already held for orders.
-export const stockFor = (cut, reserved = 0) =>
-  cut.is_live
-    ? Math.max((cut.packages_on_hand ?? 0) - Math.max(cut.held ?? 0, reserved), 0)
-    : 0;
-
-function toCartItem(row, reserved) {
+function toCartItem(row, stock) {
   const { cut } = row;
   const farm = cut.farm;
   return {
@@ -38,7 +34,7 @@ function toCartItem(row, reserved) {
     lbsPerPackage: Number(row.pack_size_lb ?? cut.pounds_per_package),
     quantity: row.quantity,
     // Packages of this cut in stock, shared by every cart row for the cut.
-    stock: stockFor(cut, reserved),
+    stock: availablePackages(cut, stock),
     farm: {
       id: farm.id,
       name: farm.name,
@@ -174,18 +170,9 @@ export function CartProvider({ children }) {
       .order("created_at");
     if (loadError) throw loadError;
 
-    const cutIds = [...new Set(data.map(({ cut }) => cut.id))];
-    const reservedByCut = new Map();
-    if (cutIds.length) {
-      const { data: stock, error: stockError } = await supabase
-        .from("cut_stock")
-        .select("id, reserved")
-        .in("id", cutIds);
-      if (stockError) throw stockError;
-      for (const row of stock) reservedByCut.set(row.id, row.reserved ?? 0);
-    }
+    const stock = await loadStock(supabase, data.map(row => row.cut.id));
     const { kept, notices: newNotices, toUpdate, toDelete } = reconcile(
-      data.map((row) => toCartItem(row, reservedByCut.get(row.cut.id)))
+      data.map(row => toCartItem(row, stock.get(row.cut.id)))
     );
 
     const writes = await Promise.all([
@@ -242,6 +229,10 @@ export function CartProvider({ children }) {
 
   useEffect(() => {
     if (!cartId || !cutIdsKey) return;
+    const refreshVisibleCart = () => {
+      if (document.visibilityState === "visible") refresh(cartId).catch(setError);
+    };
+    document.addEventListener("visibilitychange", refreshVisibleCart);
     const channel = supabase
       .channel(`cart-cuts-${cartId}`)
       .on(
@@ -261,6 +252,7 @@ export function CartProvider({ children }) {
       )
       .subscribe();
     return () => {
+      document.removeEventListener("visibilitychange", refreshVisibleCart);
       supabase.removeChannel(channel);
     };
   }, [cartId, cutIdsKey, refresh]);

@@ -1,54 +1,9 @@
 # Guest checkout setup
 
-Use a development Supabase project with the cart and producer order schema installed.
-Set `VITE_SUPABASE_URL` and the project's publishable key
-(`VITE_SUPABASE_ANON_KEY`) in the ignored `.env.local`, and enable anonymous sign-in.
-The browser uses the guest's Supabase session. Keep administrative keys out of Vite.
+The Nov 24 shared-project audit confirmed anonymous sign-in is enabled, cart ownership policies are present, and the required non-null package size and unique (cart_id, cut_id, pack_size_lb) already exist. Skip the cart migration on this project. Older development databases can run 20261114_cart_package_sizes.sql first.
 
-Before applying SQL, confirm the cart has its guest ownership policies, the
-producer schema includes `order_items.reserved_quantity`, and the `cut_stock`
-view counts new orders' reserved quantities. Check the deployed definitions:
+The deployed cut_stock view reports packages_on_hand and sums reserved_quantity for new, confirmed, and packed orders. place_order uses this view. advance_order deducts shipped packages on delivery. cuts.held is a separate batch field and the order functions do not maintain it. There are no user-defined order or order-item triggers. Both the shopper and producer order flows use on_hand minus reserved.
 
-```sql
-select indexdef from pg_indexes
-where schemaname = 'public' and tablename in ('cart_items', 'order_items');
+The shared project still needs supabase/migrations/20261115_guest_checkout.sql. The submit function and request journal were absent. The baseline must include order_number_seq, the existing order tables, cut_stock and cart ownership policies. Run the migration in an isolated test project first. Test two sizes, a rejected submission, a successful checkout, an identical retry, and the producer's order allocation. The confirmation is an estimate, with no payment or email.
 
-select pg_get_viewdef('public.cut_stock'::regclass, true);
-
-select to_regprocedure('public.submit_guest_checkout(jsonb)')
-  as installed_checkout_function;
-```
-
-Order items must allow separate lines for the same cut within one order.
-Confirm that the order number and delivery address columns accept text of the
-length used by checkout, and check the existing order triggers and producer
-order functions. Public read access confirmed `pack_size_lb` exists, but did
-not establish the installed indexes, triggers, or checkout function.
-
-Apply these files in this order in the development project:
-
-1. `supabase/migrations/20261114_cart_package_sizes.sql` backfills legacy cart
-   rows from their cut's default weight, removes legacy uniqueness on
-   `(cart_id, cut_id)`, and installs the three-column unique key.
-2. `supabase/migrations/20261115_guest_checkout.sql` creates the private
-   request journal and installs the package-size-aware checkout function.
-   If the earlier draft was applied manually, run this updated file to replace
-   that function. The function retains receipts for existing request IDs.
-
-Test two sizes of one cut, with less stock available than the raw on-hand count.
-The cart and checkout subtract the larger of `cuts.held` and
-`cut_stock.reserved`, treating the two fields as overlapping counters.
-This avoids double-subtracting when they represent the same holds.
-The shared project showed differences between these counts on five cuts.
-Confirm their meaning with the database owner before rolling out to shared
-Supabase, especially if the two fields track independent reservations.
-
-With disposable inventory, verify both lines and the selected weight on each
-saved order item, confirm `cut_stock.reserved` increases, and check that a
-new request is visible to the producer. Try a rejected delivery or pickup
-choice and submit a correction. Retrying the same request ID should return
-the same receipt without writing more orders. A second shopper competing for
-the last packages should be rejected when there is insufficient stock.
-
-The flow requests orders. The confirmation shows estimated prices and does
-not collect payments or send email.
+Before accepting real orders, coordinate appropriate order and inventory access policies with the owners of producer features. The shared audit found broad public access and disabled row-level security on orders, order_items and cuts. The checkout migration does not modify those existing permissions.

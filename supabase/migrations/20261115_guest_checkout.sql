@@ -89,10 +89,11 @@ begin
     join public.cuts c on c.id = ci.cut_id
     left join public.cut_stock s on s.id = c.id
     where ci.cart_id = cart.id
-    group by c.id, c.is_live, c.packages_on_hand, c.held, s.reserved
+    group by c.id, c.is_live, s.on_hand, s.reserved
     having c.is_live is not true
+       or s.on_hand is null or s.reserved is null
        or sum(ci.quantity) > greatest(
-         coalesce(c.packages_on_hand, 0) - greatest(coalesce(c.held, 0), coalesce(s.reserved, 0)),
+         s.on_hand - s.reserved,
          0
        )
   ) then
@@ -145,7 +146,7 @@ begin
       fulfillment_method, delivery_address, pickup_location_id, status
     )
     values (
-      'CC-' || rid::text || '-' || farm.id::text, farm.id, fname, email,
+      'CC-' || nextval('public.order_number_seq'), farm.id, fname, email,
       nullif(payload->'contact'->>'phone', ''), choice->>'method',
       case when choice->>'method' = 'delivery' then address || ', ' || zip end,
       pickup, 'new'

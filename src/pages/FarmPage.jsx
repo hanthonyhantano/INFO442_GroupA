@@ -3,7 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import { useNavigation } from "../navigation/useNavigation";
 import { contentFor } from "../lib/products";
 import { supabase } from "../lib/supabase";
-import { stockFor } from "../cart/CartContext";
+import { availablePackages, loadStock } from "../lib/cutAvailability";
 
 import farm1 from "../assets/farm/farm1.jpg";
 import farm2 from "../assets/farm/farm2.jpg";
@@ -104,7 +104,7 @@ function mapFarmRow(row) {
 
 // A Supabase cuts row -> what a product card needs. Same sources as the
 // product page: id/price/stock/weight from Supabase, image local-first.
-function mapCutRow(row) {
+function mapCutRow(row, stock) {
   const content = contentFor(row.name);
   return {
     id: row.id, // cuts.id, the id the product page and cart use
@@ -112,7 +112,7 @@ function mapCutRow(row) {
     photoUrl: content.photoUrl || asUrl(row.photo),
     pricePerLb: Number(row.price_per_pound) || 0,
     defaultSize: Number(row.pounds_per_package) || content.defaultSize,
-    availablePackages: stockFor(row),
+    availablePackages: availablePackages(row, stock),
   };
 }
 
@@ -127,7 +127,7 @@ async function fetchFarm(id) {
       .maybeSingle(),
     supabase
       .from("cuts")
-      .select("id, name, photo, price_per_pound, pounds_per_package, packages_on_hand, held, is_live")
+      .select("id, name, photo, price_per_pound, pounds_per_package, packages_on_hand, is_live")
       .eq("farm_id", id)
       .order("name"),
   ]);
@@ -137,7 +137,8 @@ async function fetchFarm(id) {
   if (!farmRes.data) return { farm: null, products: [] };
 
   const farm = mapFarmRow(farmRes.data);
-  const products = (cutsRes.data ?? []).map(mapCutRow);
+  const stock = await loadStock(supabase, cutsRes.data.map(row => row.id));
+  const products = cutsRes.data.map(row => mapCutRow(row, stock.get(row.id)));
   return { farm, products };
 }
 

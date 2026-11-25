@@ -15,6 +15,7 @@ declare
   legacy record;
   cart_column smallint;
   cut_column smallint;
+  size_column smallint;
 begin
   select attnum into cart_column from pg_attribute
   where attrelid = 'public.cart_items'::regclass and attname = 'cart_id';
@@ -39,9 +40,14 @@ begin
   loop
     execute format('drop index public.%I', legacy.relname);
   end loop;
+  select attnum into size_column from pg_attribute
+    where attrelid='public.cart_items'::regclass and attname='pack_size_lb';
+  if not exists (select 1 from pg_index i where i.indrelid='public.cart_items'::regclass
+    and i.indisunique and i.indisvalid and i.indimmediate and i.indpred is null
+    and i.indnkeyatts=3 and array[i.indkey[0],i.indkey[1],i.indkey[2]]
+      @> array[cart_column,cut_column,size_column]) then
+    create unique index cart_items_cart_cut_pack_size_uidx on public.cart_items(cart_id,cut_id,pack_size_lb);
+  end if;
 end $$;
-
-create unique index if not exists cart_items_cart_cut_pack_size_uidx
-  on public.cart_items (cart_id, cut_id, pack_size_lb);
 
 commit;

@@ -2,9 +2,10 @@ import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router-dom";
 import { useNavigation } from "../navigation/useNavigation";
 import { contentFor } from "../lib/products";
+import { availablePackages, loadStock } from "../lib/cutAvailability";
 import CowDiagram from "../discovery/CowDiagram";
 import { supabase } from "../lib/supabase";
-import { useCart, stockFor } from "../cart/CartContext";
+import { useCart } from "../cart/CartContext";
 
 // Local farm logos, used when a farm row has no logo in Supabase (same fallback as FarmPage).
 import farm1 from "../assets/farm/farm1.jpg";
@@ -21,7 +22,7 @@ const money = (n) => `$${n.toFixed(2)}`;
 // Columns the page needs from Supabase, with the farm joined in via cuts.farm_id.
 const CUT_COLUMNS = `
   id, name, description, photo, cooking_tags,
-  price_per_pound, pounds_per_package, packages_on_hand, held, is_live,
+  price_per_pound, pounds_per_package, is_live,
   farm:farms ( id, name, town, state, logo )
 `;
 
@@ -33,7 +34,7 @@ const asUrl = (v) =>
 // Turns a Supabase cuts row into the shape the page renders.
 // Price, stock, farm, name and photo come from Supabase; written content
 // (cook steps, cow region, blurbs) still comes from lib/products.js.
-function toProduct(row) {
+function toProduct(row, stock) {
   const content = contentFor(row.name);
   const dbSize = Number(row.pounds_per_package) || null;
   const defaultSize = dbSize ?? content.defaultSize;
@@ -50,7 +51,7 @@ function toProduct(row) {
     photoUrl: content.photoUrl || asUrl(row.photo),
     pricePerLb: Number(row.price_per_pound) || 0,
     // Same stock rule as the cart (CartContext stockFor)
-    inStock: stockFor(row),
+    inStock: availablePackages(row, stock),
     defaultSize,
     packSizes,
     farm: {
@@ -98,18 +99,21 @@ export default function ProductPage() {
     }
 
     Promise.all([
-      supabase.from("cuts").select(CUT_COLUMNS).eq("id", cutIdNum).maybeSingle(),
-      supabase.from("cuts").select(CUT_COLUMNS).neq("id", cutIdNum).order("id").limit(3),
-    ]).then(([main, others]) => {
+      supabase.from("cuts").select(CUT_COLUMNS).eq("id", cutIdNum).eq("is_live", true).maybeSingle(),
+      supabase.from("cuts").select(CUT_COLUMNS).neq("id", cutIdNum).eq("is_live", true).order("id").limit(3),
+    ]).then(async ([main, others]) => {
       if (cancelled) return;
       if (main.error) console.error("Loading cut failed:", main.error);
       if (others.error) console.error("Loading related cuts failed:", others.error);
 
-      const p = main.data ? toProduct(main.data) : null;
+      const rows = [main.data, ...(others.data ?? [])].filter(Boolean);
+      const stock = await loadStock(supabase, rows.map(row => row.id));
+      if (cancelled) return;
+      const p = main.data ? toProduct(main.data, stock.get(main.data.id)) : null;
       setProduct(p);
-      setRelated((others.data ?? []).map(toProduct));
+      setRelated((others.data ?? []).map(row => toProduct(row, stock.get(row.id))));
       setSize(p?.defaultSize ?? 2.5);
-    });
+    }).catch(() => { if (!cancelled) setProduct({loadError:true}); });
 
     return () => { cancelled = true; };
   }, [id]);
@@ -137,6 +141,8 @@ export default function ProductPage() {
       </div>
     );
   }
+
+  if (product?.loadError) return <p role="alert">Could not load current availability. <button onClick={() => window.location.reload()}>Retry</button></p>;
 
   if (!product) {
     return (
