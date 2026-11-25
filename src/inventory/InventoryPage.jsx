@@ -1,3 +1,4 @@
+import { storageUrl } from '../lib/farmPhotos'
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { createCut, fetchInventory, saveCut } from './inventoryApi'
@@ -28,11 +29,18 @@ function toDraft(cut) {
 function CutRow({ cut, selected, onSelect }) {
   const available = availableOf(cut)
   const state = rowStatus(cut)
+  const photoUrl = storageUrl(cut.photo, 'produtcut-photos')
   return (
     <li>
       <button type="button" className={selected ? 'inv-row is-selected' : 'inv-row'} aria-pressed={selected} onClick={() => onSelect(cut.id)}>
         <span className="inv-photo" aria-hidden="true">
-          {cut.photo && <img src={cut.photo} alt="" />}
+          {photoUrl && (
+            <img
+              src={photoUrl}
+              alt=""
+              style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block', borderRadius: 'inherit' }}
+            />
+          )}
         </span>
         <span className="inv-name">
           <strong>

@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase.js'
+import { storageUrl } from '../lib/farmPhotos.js'
 
 // TODO: replace with the signed-in producer's farm once producer sign-in exists.
 export const DEMO_FARM_SLUG = 'lorem-ranch'
@@ -12,7 +13,7 @@ function toCut(row, held) {
     id: row.id,
     name: row.name,
     description: row.description ?? '',
-    photo: row.photo,
+    photo: storageUrl(row.photo, 'produtcut-photos'),
     part: row.cow_parts?.name ?? '',
     batchCode: row.batches?.batch_code ?? '',
     pricePerPound: Number(row.price_per_pound),
