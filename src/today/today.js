@@ -31,8 +31,14 @@ export function orderShortages(orders, cuts) {
   const remaining = new Map(cuts.map((cut) => [cut.id, cut.onHand]))
   const shortages = new Map()
   for (const order of waitingOrders(orders)) {
+    // The database reserves what it can per order line; whatever it couldn't reserve is the shortage.
+    const hasAllocations = order.items.every((item) => Number.isFinite(item.allocated))
     let short = 0
     for (const item of order.items) {
+      if (hasAllocations) {
+        short += Math.max(0, item.quantity - item.allocated)
+        continue
+      }
       const left = remaining.get(item.cutId) ?? 0
       if (item.quantity > left) short += item.quantity - left
       remaining.set(item.cutId, Math.max(0, left - item.quantity))
