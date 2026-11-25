@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import { useParams, useSearchParams, Link } from "react-router-dom";
+import { readDemoFarm } from "../profile/profileApi";
 import { useNavigation } from "../navigation/useNavigation";
 import { contentFor } from "../lib/products";
 import { supabase } from "../lib/supabase";
 import { stockFor } from "../cart/CartContext";
-import { readDemoFarm } from "../profile/profileApi";
 
 import farm1 from "../assets/farm/farm1.jpg";
 import farm2 from "../assets/farm/farm2.jpg";
