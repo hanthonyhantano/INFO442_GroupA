@@ -6,7 +6,7 @@ import ZipControl from './ZipControl'
 import logo from '../assets/navigation/catcow.png'
 import cart from '../assets/navigation/cart.svg'
 
-export default function ShopperLayout() {
+export default function ShopperLayout({ livePackageCount }) {
   const { pathname } = useLocation()
   const [menuPath, setMenuPath] = useState(null)
   const [previousPath, setPreviousPath] = useState(pathname)
@@ -16,7 +16,8 @@ export default function ShopperLayout() {
   }
   const menuOpen = menuPath === pathname
   const menuButton = useRef(null)
-  const { cartPackageCount } = useNavigation()
+  const { cartPackageCount: suppliedCount } = useNavigation()
+  const cartPackageCount = livePackageCount ?? suppliedCount
   return <div className="shopper-layout">
     <a className="skip-link" href="#main-content">Skip to content</a>
     {pathname === '/' && <div className="announcement">Washington ranches · Make the whole cow valuable</div>}

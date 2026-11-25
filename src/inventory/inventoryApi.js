@@ -25,23 +25,16 @@ function toCut(row, held) {
 }
 
 /** The farm's cuts (with held packages), plus the parts and batches the Add cut form needs. */
-export async function fetchInventory() {
-  const { data: farm, error: farmError } = await supabase
-    .from('farms')
-    .select('id')
-    .eq('slug', DEMO_FARM_SLUG)
-    .maybeSingle()
+export async function fetchInventory(assignedFarmId) {
+  const farms = supabase.from('farms').select('id')
+  const query = assignedFarmId ? farms.eq('id', assignedFarmId) : farms.eq('slug', DEMO_FARM_SLUG)
+  const { data: farm, error: farmError } = await query.maybeSingle()
   if (farmError) throw farmError
   if (!farm) return { farmId: null, cuts: [], parts: [], batches: [] }
 
   const [cutsResult, heldResult, partsResult, batchesResult] = await Promise.all([
     supabase.from('cuts').select(CUT_COLUMNS).eq('farm_id', farm.id).order('id'),
-    // Held = packages in orders that are still New.
-    supabase
-      .from('order_items')
-      .select('cut_id, quantity, orders!inner(status, farm_id)')
-      .eq('orders.status', 'new')
-      .eq('orders.farm_id', farm.id),
+    supabase.from('cut_stock').select('id,reserved').eq('farm_id', farm.id),
     supabase.from('cow_parts').select('id, name').order('id'),
     supabase.from('batches').select('id, batch_code, animal').eq('farm_id', farm.id).order('id'),
   ])
@@ -49,10 +42,7 @@ export async function fetchInventory() {
     if (result.error) throw result.error
   }
 
-  const held = new Map()
-  for (const item of heldResult.data) {
-    held.set(item.cut_id, (held.get(item.cut_id) ?? 0) + item.quantity)
-  }
+  const held = new Map(heldResult.data.map(row => [row.id, Number(row.reserved)]))
   return {
     farmId: farm.id,
     cuts: cutsResult.data.map((row) => toCut(row, held.get(row.id) ?? 0)),

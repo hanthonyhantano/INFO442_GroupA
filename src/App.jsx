@@ -20,15 +20,20 @@ import Inventory from './pages/producer/Inventory'
 import Batches from './pages/producer/Batches'
 import Import from './pages/producer/Import'
 import FarmProfile from './pages/producer/FarmProfile'
-import { CartProvider } from "./cart/CartContext";
+import { CartProvider, useCart } from "./cart/CartContext";
 import './App.css'
+
+function ShopperCartLayout() {
+  const { loading, error, packageCount } = useCart()
+  return <ShopperLayout livePackageCount={loading || error ? null : packageCount} />
+}
 
 export default function App() {
   return (
     <Routes>
       <Route element={
           <CartProvider>
-            <ShopperLayout />
+            <ShopperCartLayout />
           </CartProvider>
         }>
         <Route path="/" element={<Home />} />
@@ -43,9 +48,9 @@ export default function App() {
         <Route path="/request-sent" element={<RequestSent />} />
         <Route path="/mission" element={<Mission />} />
         <Route path="/producers" element={<ForProducers />} />
-        <Route path="/sign-in" element={<SignIn />} />
         <Route path="/apply" element={<Apply />} />
       </Route>
+      <Route element={<ShopperLayout />}><Route path="/sign-in" element={<SignIn />} /></Route>
       <Route path="/producer" element={<ProducerLayout />}>
         <Route index element={<Navigate to="today" replace />} />
         <Route path="today" element={<Today />} />

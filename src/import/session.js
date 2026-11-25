@@ -2,9 +2,9 @@ import { FIELDS, MAX_ROWS } from './csv'
 
 const KEY = 'catcow.csv-import.v1'
 
-export function readImportSession() {
+export function readImportSession(scope = '') {
   try {
-    const draft = JSON.parse(sessionStorage.getItem(KEY))
+    const draft = JSON.parse(sessionStorage.getItem(KEY + scope))
     if (!draft || ![1, 2, 3].includes(draft.step)) return null
     const { file, mapping } = draft
     if (
@@ -44,10 +44,10 @@ export function readImportSession() {
   }
 }
 
-export function saveImportSession(draft) {
+export function saveImportSession(draft, scope = '') {
   try {
-    if (!draft.file) sessionStorage.removeItem(KEY)
-    else sessionStorage.setItem(KEY, JSON.stringify(draft))
+    if (!draft.file) sessionStorage.removeItem(KEY + scope)
+    else sessionStorage.setItem(KEY + scope, JSON.stringify(draft))
     return true
   } catch {
     return false

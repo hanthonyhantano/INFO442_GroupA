@@ -25,3 +25,10 @@ it('handles unavailable or full browser storage', () => {
   vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => { throw new Error('blocked') })
   expect(readImportSession()).toBeNull()
 })
+
+it('keeps saved imports separate for each account and farm', () => {
+  saveImportSession(draft, ':owner-a:1')
+  expect(readImportSession(':owner-b:2')).toBeNull()
+  expect(readImportSession()).toBeNull()
+  expect(readImportSession(':owner-a:1')).toEqual(draft)
+})

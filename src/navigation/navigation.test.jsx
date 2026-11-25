@@ -25,7 +25,7 @@ function ZipConsumer() { const { zip } = useNavigation(); return <output aria-la
 describe('shopper navigation', () => {
   it('links to each existing destination and marks only the selected section', async () => {
     const user = userEvent.setup(); mount()
-    for (const [label, heading] of [['Shop','Shop beef'], ['Explore Cuts','Pick a part of the cow.'], ['Farms',/^Farms/], ['Our Mission','Make the whole cow valuable.'], ['For Producers','ForProducers']]) {
+    for (const [label, heading] of [['Shop','Shop beef'], ['Explore Cuts','Pick a part of the cow.'], ['Farms',/^Farms/], ['Our Mission','Make the whole cow valuable.'], ['For Producers','For producers']]) {
       await user.click(screen.getByRole('link', { name: label, exact: true }))
       expect(screen.getByRole('heading', { name: heading })).toBeTruthy()
       expect(screen.getByRole('link', { name: label, exact: true }).getAttribute('aria-current')).toBe('page')
@@ -84,7 +84,7 @@ describe('producer navigation', () => {
   })
   it('redirects a confirmed signed-out session', () => {
     mount('/producer/orders', { session: null })
-    expect(screen.getByRole('heading', { name: 'SignIn' })).toBeTruthy()
+    expect(screen.getByRole('heading', { name: 'Producer sign in' })).toBeTruthy()
     expect(screen.queryByRole('navigation', { name: 'Producer' })).toBeNull()
   })
   it('closes account options on Escape, outside click, and navigation', async () => {
@@ -104,7 +104,7 @@ describe('producer navigation', () => {
     await user.click(screen.getByRole('button', { name: 'Log out' }))
     expect(screen.getByRole('alert').textContent).toContain('Could not log out')
     await user.click(screen.getByRole('button', { name: 'Log out' }))
-    await waitFor(() => expect(screen.getByRole('heading', { name: 'SignIn' })).toBeTruthy())
+    await waitFor(() => expect(screen.getByRole('heading', { name: 'Producer sign in' })).toBeTruthy())
     expect(signOut).toHaveBeenCalledTimes(2)
   })
   it('closes the mobile menu after a selection', async () => {
