@@ -87,6 +87,14 @@ describe('buildTasks', () => {
     const fixed = cuts.map((c) => (c.id === 4 ? { ...c, onHand: 20 } : c))
     expect(buildTasks(orders, fixed).some((task) => task.key === 'low-4' || task.type === 'conflict')).toBe(false)
   })
+    it('links each task to the specific order, cut or batch', () => {
+    const withBatch = cuts.map((c) => ({ ...c, batchId: c.batchCode === 'LF-1010' ? 7 : 3 }))
+    const links = Object.fromEntries(buildTasks(orders, withBatch).map((t) => [t.key, t.to]))
+    expect(links['conflict-2']).toBe('/producer/orders?order=CC-1040')
+    expect(links['low-4']).toBe('/producer/inventory?cut=4')
+    expect(links['publish-LF-1010']).toBe('/producer/inventory?batch=7&chip=drafts')
+    expect(links['order-requests']).toBe('/producer/orders')
+  })
 })
 
 describe('filters and completed', () => {

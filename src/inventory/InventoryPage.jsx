@@ -74,7 +74,7 @@ export default function InventoryPage({assignedFarmId}) {
   const [batchOptions, setBatchOptions] = useState([])
   const [status, setStatus] = useState('loading')
   const [search, setSearch] = useState('')
-  const [chip, setChip] = useState('all')
+  const [chip, setChip] = useState(() => (CHIPS.some(({ key }) => key === params.get('chip')) ? params.get('chip') : 'all'))
   const [part, setPart] = useState(null)
   const [selectedId, setSelectedId] = useState(null)
   const [draft, setDraft] = useState(null)
@@ -227,7 +227,19 @@ export default function InventoryPage({assignedFarmId}) {
       setSaving(false)
     }
   }
-
+// Today links here as ?cut=<id> to open that cut's edit panel.
+const linkCut = params.get('cut')
+useEffect(() => {
+  if (status !== 'ready' || !linkCut) return
+  const id = Number(linkCut)
+  if (cuts.some((cut) => cut.id === id)) openCut(id)
+  setParams((current) => {
+    const next = new URLSearchParams(current)
+    next.delete('cut')
+    return next
+  }, { replace: true })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [status, linkCut])
   if (status === 'loading') return <p className="inv-message">Loading inventory…</p>
   if (status === 'error') return <p className="inv-message" role="alert">Something went wrong. Try again.</p>
 

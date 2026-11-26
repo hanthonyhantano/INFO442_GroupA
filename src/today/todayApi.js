@@ -93,7 +93,7 @@ async function load() {
   if (!farm) return { tasks: [], orders: [], cuts: [], batches: [] }
 
   const [cutsResult, stockResult, ordersResult, batchesResult, tasksResult] = await Promise.all([
-    supabase.from('cuts').select('id, name, is_live, batches(batch_code)').eq('farm_id', farm.id),
+    supabase.from('cuts').select('id, name, is_live, batch_id, batches(batch_code)').eq('farm_id', farm.id),
     // The same stock numbers the Orders page uses: on hand, and reserved by new, confirmed and packed orders.
     supabase.from('cut_stock').select('id, on_hand, reserved').eq('farm_id', farm.id),
     supabase
@@ -127,6 +127,7 @@ async function load() {
     id: cut.id,
     name: cut.name,
     batchCode: cut.batches?.batch_code ?? '',
+    batchId: cut.batch_id ?? null,
     onHand: stock.get(cut.id)?.on_hand ?? 0,
     held: stock.get(cut.id)?.reserved ?? 0,
     isLive: cut.is_live,

@@ -65,7 +65,7 @@ export function buildTasks(orders, cuts) {
       title: order.number + ' requests more than you have',
       description: 'Short by ' + plural(shortages.get(order.id), 'package') + '. Lower the quantity or reject the order.',
       action: 'Resolve',
-      to: '/producer/orders',
+      to: '/producer/orders?order=' + encodeURIComponent(order.number),
       createdAt: order.createdAt,
     })
   }
@@ -96,7 +96,7 @@ export function buildTasks(orders, cuts) {
       title: cut.name + ' is running low',
       description: left === 0 ? 'Sold out. Update the count if you have more.' : plural(left, 'package') + ' left.',
       action: 'Update',
-      to: '/producer/inventory',
+      to: '/producer/inventory?cut=' + cut.id,
       cutId: cut.id,
       createdAt: null,
     })
@@ -104,9 +104,12 @@ export function buildTasks(orders, cuts) {
 
   const drafts = new Map()
   for (const cut of cuts) {
-    if (!cut.isLive) drafts.set(cut.batchCode, (drafts.get(cut.batchCode) ?? 0) + 1)
+    if (cut.isLive) continue
+    const entry = drafts.get(cut.batchCode) ?? { count: 0, batchId: cut.batchId ?? null }
+    entry.count += 1
+    drafts.set(cut.batchCode, entry)
   }
-  for (const [batchCode, count] of drafts) {
+  for (const [batchCode, { count, batchId }] of drafts) {
     tasks.push({
       key: 'publish-' + batchCode,
       type: 'publish',
@@ -115,7 +118,7 @@ export function buildTasks(orders, cuts) {
       title: 'Publish ' + plural(count, 'draft') + ' from batch ' + batchCode,
       description: 'These cuts are hidden from shoppers until you publish them.',
       action: 'Publish',
-      to: '/producer/inventory',
+      to: batchId ? '/producer/inventory?batch=' + batchId + '&chip=drafts' : '/producer/inventory?chip=drafts',
       batchCode,
       createdAt: null,
     })
