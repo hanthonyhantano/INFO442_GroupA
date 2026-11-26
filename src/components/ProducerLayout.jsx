@@ -78,6 +78,7 @@ export default function ProducerLayout() {
       </div>
     </aside>
     <div className="producer-content"><header className="producer-header"><h1>{producerTitle(pathname)}</h1>
+      {pathname === '/producer/profile' && <div id="farm-profile-actions" />}
       {producer?.farmName && <span>{producer.farmName}</span>}</header>
       <main className="navigation-main" id="main-content" tabIndex={-1}><Outlet /></main>
     </div>

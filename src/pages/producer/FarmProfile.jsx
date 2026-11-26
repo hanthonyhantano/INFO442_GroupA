@@ -1,298 +1,338 @@
-import { useEffect, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import { supabase } from '../../lib/supabase'
-import { useProducer } from '../../components/RequireProducer'
-
-// /producer/profile: the signed-in producer's own details and their farm.
-// useProducer() comes from RequireProducer: { id, name, role, farm_id }.
-const FARM_COLUMNS =
-  'id, name, slug, town, state, story, contact_email, contact_phone, logo, cover_photo'
-
-const PHOTO_BUCKET = 'farm-photos'
-const MAX_PHOTO_MB = 5
-
-// Uploads one image to Storage under the farm's folder, saves its public
-// URL in the given farms column, and returns the updated farm row.
-async function uploadFarmPhoto(farmId, column, file) {
-  if (!file.type.startsWith('image/')) throw new Error('Please choose an image file.')
-  if (file.size > MAX_PHOTO_MB * 1024 * 1024) {
-    throw new Error(`Please choose an image under ${MAX_PHOTO_MB} MB.`)
-  }
-
-  const ext = (file.name.split('.').pop() || 'jpg').toLowerCase()
-  // New file name every time, so browsers never show an old cached photo
-  const path = `${farmId}/${column}-${Date.now()}.${ext}`
-
-  const { error: uploadFailure } = await supabase.storage
-    .from(PHOTO_BUCKET)
-    .upload(path, file, { contentType: file.type })
-  if (uploadFailure) throw uploadFailure
-
-  const { data: urlData } = supabase.storage.from(PHOTO_BUCKET).getPublicUrl(path)
-
-  const { data, error: saveFailure } = await supabase
-    .from('farms')
-    .update({ [column]: urlData.publicUrl })
-    .eq('id', farmId)
-    .select(FARM_COLUMNS)
-    .single()
-  if (saveFailure) throw saveFailure
-  return data
-}
-
-function PhotoField({ label, hint, farm, column, shape, onSaved }) {
-  const [busy, setBusy] = useState(false)
-  const [error, setError] = useState('')
-  const url = farm[column]
-
-  async function choose(event) {
-    const file = event.target.files?.[0]
-    event.target.value = '' // lets them pick the same file again later
-    if (!file) return
-    setBusy(true)
-    setError('')
-    try {
-      onSaved(await uploadFarmPhoto(farm.id, column, file))
-    } catch (err) {
-      console.error('Photo upload failed:', err)
-      setError(err?.message ?? 'Could not upload that photo.')
-    } finally {
-      setBusy(false)
-    }
-  }
-
-  const box =
-    shape === 'circle'
-      ? { width: 96, height: 96, borderRadius: '50%' }
-      : { width: '100%', maxWidth: 480, aspectRatio: '16 / 7', borderRadius: 8 }
-
-  return (
-    <div style={{ marginBottom: 24 }}>
-      <h3>{label}</h3>
-      {url ? (
-        <img src={url} alt={`${label} for ${farm.name}`} style={{ ...box, objectFit: 'cover', display: 'block' }} />
-      ) : (
-        <div style={{ ...box, background: '#f0f0ec' }} aria-hidden="true" />
-      )}
-      <p>
-        <label>
-          {busy ? 'Uploading…' : url ? `Change ${label.toLowerCase()}` : `Upload ${label.toLowerCase()}`}{' '}
-          <input type="file" accept="image/*" onChange={choose} disabled={busy} />
-        </label>
-      </p>
-      <small>{hint}</small>
-      {error && <p role="alert">{error}</p>}
-    </div>
-  )
-}
+import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
+import { loadProfile, saveProfile } from '../../profile/profileApi'
+import { readPhoto, validate, splitList } from '../../profile/profile'
+import Fulfillment from '../../profile/Fulfillment'
+import cover from '../../profile/assets/cover.png'
+import gallery from '../../profile/assets/gallery.png'
+import '../../profile/profile.css'
 
 export default function FarmProfile() {
-  const navigate = useNavigate()
-  const profile = useProducer()
-
-  const [farm, setFarm] = useState(undefined) // undefined = loading, null = failed
-  const [editing, setEditing] = useState(false)
-  const [busy, setBusy] = useState(false)
-  const [message, setMessage] = useState('')
+  const [saved, setSaved] = useState(null)
+  const [draft, setDraft] = useState(null)
+  const [demo, setDemo] = useState(false)
   const [error, setError] = useState('')
-  const [displayName, setDisplayName] = useState(profile.name ?? '')
-
+  const [status, setStatus] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [attempt, retry] = useState(0)
+  const [practice, setPractice] = useState(null)
+  const [confirm, setConfirm] = useState(false)
+  const [tried, setTried] = useState(false)
+  const lock = useRef(false)
+  const dirty = JSON.stringify(saved) !== JSON.stringify(draft)
   useEffect(() => {
-    let cancelled = false
-    supabase
-      .from('farms')
-      .select(FARM_COLUMNS)
-      .eq('id', profile.farm_id)
-      .maybeSingle()
-      .then(({ data, error: failure }) => {
-        if (cancelled) return
-        if (failure) console.error('Loading farm failed:', failure)
-        setFarm(data ?? null)
+    let current = true
+    loadProfile()
+      .then((result) => {
+        if (current) {
+          setSaved(result.profile)
+          setDraft(result.profile)
+          setDemo(result.demo)
+          setError('')
+        }
       })
-    return () => { cancelled = true }
-  }, [profile.farm_id])
-
-  // Clear "Saved" after a few seconds
-  useEffect(() => {
-    if (!message) return
-    const t = setTimeout(() => setMessage(''), 3000)
-    return () => clearTimeout(t)
-  }, [message])
-
-  async function save(event) {
-    event.preventDefault()
-    if (busy) return
-    const fields = new FormData(event.currentTarget)
-    const text = (key) => String(fields.get(key) ?? '').trim()
-
-    const farmChanges = {
-      name: text('farm_name'),
-      town: text('town') || null,
-      state: text('state').toUpperCase() || null,
-      story: text('story') || null,
-      contact_email: text('contact_email') || null,
-      contact_phone: text('contact_phone') || null,
+      .catch((failure) => {
+        if (current) setError(failure.code === 'NO_FARM' ? failure.message : 'Could not load the farm profile.')
+      })
+    return () => {
+      current = false
     }
-    const newName = text('your_name') || null
-
-    setBusy(true)
+  }, [attempt])
+  useEffect(() => {
+    if (!dirty) return
+    const unload = (e) => {
+      e.preventDefault()
+      e.returnValue = ''
+    }
+    const leave = (e) => {
+      const a = e.target.closest?.('a[href]')
+      if (
+        a &&
+        a.target !== '_blank' &&
+        !e.metaKey &&
+        !e.ctrlKey &&
+        a.pathname !== window.location.pathname &&
+        !window.confirm('Discard your changes?')
+      ) {
+        e.preventDefault()
+        e.stopPropagation()
+      }
+    }
+    window.addEventListener('beforeunload', unload)
+    document.addEventListener('click', leave, true)
+    return () => {
+      window.removeEventListener('beforeunload', unload)
+      document.removeEventListener('click', leave, true)
+    }
+  }, [dirty])
+  if (!draft)
+    return error ? (
+      <p role="alert">
+        {error}{' '}
+        <button
+          onClick={() => {
+            setError('')
+            retry(attempt + 1)
+          }}
+        >
+          Retry
+        </button>
+      </p>
+    ) : (
+      <p role="status">Loading farm profile…</p>
+    )
+  const errors = validate(draft)
+  function set(key, value) {
+    setDraft((p) => ({ ...p, [key]: value }))
     setError('')
+    setStatus('')
+  }
+  async function save(e) {
+    e.preventDefault()
+    if (lock.current) return
+    setTried(true)
+    setStatus('')
+    setError('')
+    if (Object.keys(errors).length) {
+      setError('Review the highlighted fields before saving.')
+      return
+    }
+    lock.current = true
+    setBusy(true)
     try {
-      const { data, error: farmFailure } = await supabase
-        .from('farms')
-        .update(farmChanges)
-        .eq('id', farm.id)
-        .select(FARM_COLUMNS)
-        .single()
-      if (farmFailure) throw farmFailure
-
-      const { error: profileFailure } = await supabase
-        .from('profiles')
-        .update({ name: newName })
-        .eq('id', profile.id)
-      if (profileFailure) throw profileFailure
-
-      setFarm(data)
-      setDisplayName(newName ?? '')
-      setEditing(false)
-      setMessage('Saved ✓')
+      const next = await saveProfile(draft, demo)
+      setSaved(next)
+      setDraft(next)
+      setTried(false)
+      setConfirm(false)
+      setStatus('Farm profile saved.')
     } catch (err) {
-      console.error('Saving profile failed:', err)
-      setError(`Could not save: ${err?.message ?? 'unknown error'}`)
+      setError(err.message || 'Save failed. Your changes are still here.')
     } finally {
+      lock.current = false
       setBusy(false)
     }
   }
-
-  async function signOut() {
-    await supabase.auth.signOut()
-    navigate('/producers', { replace: true })
+  async function upload(e, isCover) {
+    const file = e.target.files[0]
+    e.target.value = ''
+    if (!file || lock.current) return
+    lock.current = true
+    setBusy(true)
+    try {
+      const image = await readPhoto(file)
+      if (isCover) set('cover_photo', image)
+      else if (draft.photos.length < 4) set('photos', [...draft.photos, image])
+    } catch (err) {
+      setError(err.message || 'Could not read this photo.')
+    } finally {
+      lock.current = false
+      setBusy(false)
+    }
   }
-
-  if (farm === undefined) return <p className="dc">Loading…</p>
-
-  if (farm === null) {
+  function input(key, label, type = 'text') {
+    const invalid = errors[key] && (tried || !dirty)
     return (
-      <section className="dc">
-        <h1>We couldn't load your farm</h1>
-        <p>Refresh the page to try again.</p>
-      </section>
+      <label>
+        {label}
+        <input
+          type={type}
+          value={draft[key]}
+          onChange={(e) => set(key, e.target.value)}
+          aria-invalid={!!invalid}
+          aria-describedby={invalid ? 'fp-' + key : undefined}
+        />
+        {invalid && (
+          <small className="fp-error" id={'fp-' + key}>
+            {errors[key]}
+          </small>
+        )}
+      </label>
     )
   }
-
-  const place = [farm.town, farm.state].filter(Boolean).join(', ')
-
+  const actions = (
+    <div className="fp-actions">
+      <a
+        href={'/farms/' + saved.id + (demo ? '?profilePreview=demo' : '')}
+        target="_blank"
+        rel="noreferrer"
+      >
+        Preview ↗
+      </a>
+      <button type="submit" form="farm-profile" disabled={busy || !dirty} className="fp-save">
+        {busy ? 'Working…' : 'Save'}
+      </button>
+    </div>
+  )
+  const host = document.getElementById('farm-profile-actions')
+  const zips = draft.zones.flatMap((z) => [...new Set(splitList(z.zips))])
   return (
-    <section className="dc">
-      <h1>{farm.name}</h1>
-      <p>
-        {displayName ? `${displayName} · ` : ''}
-        {profile.role ?? 'Owner'}
-        {place && ` · ${place}`}
-      </p>
-      <p>
-        <Link to={`/farms/${farm.id}`}>View your public farm page →</Link>
-      </p>
-
-      {message && <p role="status">{message}</p>}
-
-      <h2>Photos</h2>
-      <PhotoField
-        label="Logo"
-        hint="A square photo or logo works best. Shows next to your farm name."
-        farm={farm}
-        column="logo"
-        shape="circle"
-        onSaved={(updated) => { setFarm(updated); setMessage('Photo saved ✓') }}
-      />
-      <PhotoField
-        label="Cover photo"
-        hint="A wide photo of your land or herd. Shows at the top of your farm page."
-        farm={farm}
-        column="cover_photo"
-        shape="wide"
-        onSaved={(updated) => { setFarm(updated); setMessage('Photo saved ✓') }}
-      />
-
-      {!editing ? (
-        <>
-          <h2>About the farm</h2>
-          <p>{farm.story || 'No story yet. Tell shoppers how you raise your cattle.'}</p>
-
-          <h2>Contact</h2>
-          <p>
-            {farm.contact_email || 'No email yet'}
-            <br />
-            {farm.contact_phone || 'No phone yet'}
-          </p>
-
-          <p>
-            <button type="button" onClick={() => setEditing(true)}>
-              Edit profile
-            </button>{' '}
-            <button type="button" onClick={signOut}>
-              Sign out
-            </button>
-          </p>
-        </>
-      ) : (
-        <form onSubmit={save}>
-          <h2>You</h2>
-          <p>
-            <label>
-              Your name <input name="your_name" defaultValue={displayName} autoComplete="name" />
-            </label>
-          </p>
-
-          <h2>Your farm</h2>
-          <p>
-            <label>
-              Farm name <input name="farm_name" defaultValue={farm.name} required />
-            </label>
-          </p>
-          <p>
-            <label>
-              Town <input name="town" defaultValue={farm.town ?? ''} />
-            </label>
-          </p>
-          <p>
-            <label>
-              State <input name="state" defaultValue={farm.state ?? ''} maxLength={2} placeholder="WA" />
-            </label>
-          </p>
-          <p>
-            <label>
-              Story
-              <textarea
-                name="story"
-                rows={5}
-                defaultValue={farm.story ?? ''}
-                placeholder="How long you've ranched, how your cattle are raised, what makes your beef different."
+    <form className="fp" id="farm-profile" onSubmit={save} noValidate>
+      {host ? createPortal(actions, host) : actions}
+      <fieldset className="fp-grid" disabled={busy}>
+        <div>
+          <section className="fp-box">
+            <h2>Story</h2>
+            <label className="fp-upload fp-cover">
+              <img src={draft.cover_photo || cover} alt="Farm cover" />
+              <span>Change cover photo</span>
+              <input
+                aria-label="Upload cover photo"
+                type="file"
+                accept="image/jpeg,image/png"
+                onChange={(e) => upload(e, true)}
               />
             </label>
-          </p>
-          <p>
+            <div className="fp-pair">
+              {input('name', 'Farm name')}
+              {input('location', 'Location')}
+            </div>
             <label>
-              Contact email{' '}
-              <input name="contact_email" type="email" defaultValue={farm.contact_email ?? ''} />
+              About the farm
+              <textarea rows="5" value={draft.story} onChange={(e) => set('story', e.target.value)} />
             </label>
-          </p>
-          <p>
-            <label>
-              Contact phone{' '}
-              <input name="contact_phone" type="tel" defaultValue={farm.contact_phone ?? ''} />
-            </label>
-          </p>
-
-          {error && <p role="alert">{error}</p>}
-          <p>
-            <button disabled={busy}>{busy ? 'Saving…' : 'Save'}</button>{' '}
-            <button type="button" onClick={() => { setEditing(false); setError('') }} disabled={busy}>
-              Cancel
-            </button>
-          </p>
-        </form>
+            <div className="fp-label">Grazing practices</div>
+            <div className="fp-tags">
+              {draft.practices.map((tag) => (
+                <button
+                  type="button"
+                  key={tag}
+                  aria-label={'Remove ' + tag}
+                  onClick={() =>
+                    set(
+                      'practices',
+                      draft.practices.filter((t) => t !== tag),
+                    )
+                  }
+                >
+                  {tag} ×
+                </button>
+              ))}
+              <button type="button" onClick={() => setPractice('')}>
+                + Add
+              </button>
+            </div>
+            {practice !== null && (
+              <div className="fp-practice">
+                <label>
+                  Practice
+                  <input
+                    list="fp-practices"
+                    value={practice}
+                    onChange={(e) => setPractice(e.target.value)}
+                  />
+                </label>
+                <datalist id="fp-practices">
+                  {['Rotational grazing', 'Grass-finished', 'Grass-fed', 'Pasture raised'].map((v) => (
+                    <option key={v}>{v}</option>
+                  ))}
+                </datalist>
+                <button
+                  type="button"
+                  disabled={!practice.trim()}
+                  onClick={() => {
+                    set('practices', [...new Set([...draft.practices, practice.trim()])])
+                    setPractice(null)
+                  }}
+                >
+                  Add practice
+                </button>
+              </div>
+            )}
+          </section>
+          <section className="fp-box">
+            <h2>Photos</h2>
+            <div className="fp-photos">
+              {Array.from({ length: 4 }, (_, i) => (
+                <div key={i}>
+                  <img
+                    src={draft.photos[i] || gallery}
+                    alt={draft.photos[i] ? 'Farm photo ' + (i + 1) : ''}
+                  />
+                  {draft.photos[i] && (
+                    <button
+                      type="button"
+                      aria-label={'Remove photo ' + (i + 1)}
+                      onClick={() =>
+                        set(
+                          'photos',
+                          draft.photos.filter((_, j) => j !== i),
+                        )
+                      }
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
+              ))}
+              {draft.photos.length < 4 && (
+                <label className="fp-upload">
+                  + Upload
+                  <input
+                    aria-label="Upload farm photo"
+                    type="file"
+                    accept="image/jpeg,image/png"
+                    onChange={(e) => upload(e, false)}
+                  />
+                </label>
+              )}
+            </div>
+          </section>
+        </div>
+        <div>
+          <Fulfillment profile={draft} field="zones" set={set} errors={tried ? errors : {}} />
+          <Fulfillment profile={draft} field="pickups" set={set} errors={tried ? errors : {}} />
+          {errors.methods && <p className="fp-error">{errors.methods}</p>}
+          {new Set(zips).size < zips.length && (
+            <p role="status">A ZIP appears in more than one delivery zone.</p>
+          )}
+          <section className="fp-box">
+            <h2>Contact</h2>
+            <div className="fp-pair">
+              {input('contact_email', 'Email', 'email')}
+              {input('contact_phone', 'Phone', 'tel')}
+            </div>
+          </section>
+        </div>
+      </fieldset>
+      {error && (
+        <p role="alert" className="fp-error">
+          {error}
+        </p>
       )}
-    </section>
+      <div className="fp-footer">
+        <span role="status">
+          {status ||
+            (dirty ? 'Unsaved changes' : demo ? 'Demo farm · changes save in this browser' : '')}
+        </span>
+        {dirty && !confirm && (
+          <button type="button" disabled={busy} onClick={() => setConfirm(true)}>
+            Discard changes
+          </button>
+        )}
+        {confirm && (
+          <span>
+            Discard your changes?{' '}
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => {
+                setDraft(saved)
+                setConfirm(false)
+                setError('')
+                setTried(false)
+                setPractice(null)
+                setStatus('Changes discarded.')
+              }}
+            >
+              Discard
+            </button>{' '}
+            <button type="button" onClick={() => setConfirm(false)}>
+              Keep editing
+            </button>
+          </span>
+        )}
+      </div>
+    </form>
   )
 }

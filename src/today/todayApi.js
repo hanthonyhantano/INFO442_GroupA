@@ -60,7 +60,8 @@ async function syncTasks(farmId, computed, stored, batchIdByCode) {
           description: item.task.description,
           category: item.task.category,
           ...item.refs,
-          created_at: item.task.createdAt ?? new Date().toISOString(),        })),
+          created_at: item.task.createdAt ?? new Date().toISOString(),
+        })),
       )
       .select()
     if (error) throw error
@@ -91,17 +92,19 @@ async function load() {
   if (farmError) throw farmError
   if (!farm) return { tasks: [], orders: [], cuts: [], batches: [] }
 
-  const [cutsResult, ordersResult, batchesResult, tasksResult] = await Promise.all([
-    supabase.from('cuts').select('id, name, packages_on_hand, is_live, batches(batch_code)').eq('farm_id', farm.id),
+  const [cutsResult, stockResult, ordersResult, batchesResult, tasksResult] = await Promise.all([
+    supabase.from('cuts').select('id, name, is_live, batches(batch_code)').eq('farm_id', farm.id),
+    // The same stock numbers the Orders page uses: on hand, and reserved by new, confirmed and packed orders.
+    supabase.from('cut_stock').select('id, on_hand, reserved').eq('farm_id', farm.id),
     supabase
       .from('orders')
-      .select('id, order_number, status, created_at, order_items(cut_id, quantity, price_per_pound, pounds_per_package)')
+      .select('id, order_number, status, created_at, order_items(cut_id, quantity, reserved_quantity, price_per_pound, pounds_per_package)')
       .eq('farm_id', farm.id)
       .in('status', ['new', 'confirmed']),
     supabase.from('batches').select('id, batch_code, processing_date, processor_name').eq('farm_id', farm.id),
     supabase.from('tasks').select('*').eq('farm_id', farm.id),
   ])
-  for (const result of [cutsResult, ordersResult, batchesResult, tasksResult]) {
+  for (const result of [cutsResult, stockResult, ordersResult, batchesResult, tasksResult]) {
     if (result.error) throw result.error
   }
 
@@ -113,23 +116,19 @@ async function load() {
     items: order.order_items.map((item) => ({
       cutId: item.cut_id,
       quantity: item.quantity,
+      allocated: item.reserved_quantity,
       pricePerPound: Number(item.price_per_pound),
       poundsPerPackage: Number(item.pounds_per_package),
     })),
   }))
 
-  // Held = packages in orders that are still New.
-  const held = new Map()
-  for (const order of orders) {
-    if (order.status !== 'new') continue
-    for (const item of order.items) held.set(item.cutId, (held.get(item.cutId) ?? 0) + item.quantity)
-  }
+  const stock = new Map(stockResult.data.map((row) => [row.id, row]))
   const cuts = cutsResult.data.map((cut) => ({
     id: cut.id,
     name: cut.name,
     batchCode: cut.batches?.batch_code ?? '',
-    onHand: cut.packages_on_hand,
-    held: held.get(cut.id) ?? 0,
+    onHand: stock.get(cut.id)?.on_hand ?? 0,
+    held: stock.get(cut.id)?.reserved ?? 0,
     isLive: cut.is_live,
   }))
   const batches = batchesResult.data.map((batch) => ({

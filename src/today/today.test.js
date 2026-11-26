@@ -51,6 +51,12 @@ describe('orderShortages', () => {
   it('ignores orders that are not new', () => {
     expect(orderShortages([{ ...orders[1], status: 'confirmed' }], cuts).size).toBe(0)
   })
+  it('uses the allocation the database made when the order has one', () => {
+    const allocated = [
+      { id: 1, number: 'A', status: 'new', createdAt: '2026-11-19T10:00:00Z', items: [{ cutId: 1, quantity: 5, allocated: 3 }] },
+    ]
+    expect([...orderShortages(allocated, [cut(1, 'X', 50, 0)])]).toEqual([[1, 2]])
+  })
 })
 
 describe('buildTasks', () => {

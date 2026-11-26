@@ -1,3 +1,4 @@
+import { availablePackages, loadStock } from "../lib/cutAvailability";
 // Preview IDs, names and prices match the farm pages on the farmpages branch.
 const farms = [
   [1, "Lorem Ranch", "Ellensburg", 47.003, -120.5478, true, ["98105", "98101"]],
@@ -86,9 +87,10 @@ export async function loadCatalog(zip) {
     supabase.from("delivery_zones").select("farm_id, zip_codes"),
   ]);
   for (const result of [f, p, z, zones]) if (result.error) throw result.error;
+  const stock = await loadStock(supabase, p.data.map(cut => cut.id));
   return {
     farms: f.data.map((farm) => catalogFarm(farm, zones.data)),
-    products: p.data.map(catalogCut),
+    products: p.data.map(cut => catalogCut(cut, stock.get(cut.id))),
     center: z.data && [z.data.lat, z.data.lng],
   };
 }
@@ -108,8 +110,8 @@ export function catalogFarm(farm, zones = []) {
     tags: farm.practices ?? [],
   };
 }
-export function catalogCut(cut) {
-  const available = Math.max(0, Number(cut.packages_on_hand) - Number(cut.held ?? 0));
+export function catalogCut(cut, stock) {
+  const available = availablePackages(cut, stock);
   return {
     ...cut,
     photo_url: cut.photo,
@@ -161,3 +163,6 @@ export function visibleCatalog(data, zip) {
     .slice(0, 4);
   return { farms: nearest, items, featured };
 }
+
+// The producer demo and the shopper catalogue start with the same ranch.
+export const previewRanch = farms[0];

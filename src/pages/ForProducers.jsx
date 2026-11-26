@@ -27,8 +27,10 @@ export default function ForProducers() {
     <article className="dc dc-producers">
       <div className="dc-split">
         <div>
-          <small>For producers</small>
-          <h1>Sell more of every animal.</h1>
+          {/* The page's main heading is "For producers" (matching the nav link),
+              styled as the small label; the tagline below is styled large. */}
+          <h1 className="dc-producers__eyebrow">For producers</h1>
+          <p className="dc-producers__headline">Sell more of every animal.</p>
           <p>
             Cat Cow helps small ranches find buyers for every cut, not just the
             steaks, so less of each animal goes to waste.

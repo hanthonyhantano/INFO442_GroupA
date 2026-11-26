@@ -2902,6 +2902,22 @@ main {
   text-decoration: underline;
 }
 
+.dc-producers .dc-producers__eyebrow {
+  margin: 0;
+  font: 500 0.75rem/1.5 "IBM Plex Mono", monospace;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.dc-producers .dc-producers__headline {
+  max-width: none;
+  margin: 0.45em 0;
+  font-size: clamp(36px, 5vw, 76px);
+  font-weight: 700;
+  line-height: 1.08;
+  letter-spacing: -0.045em;
+}
+
 @media (max-width: 800px) {
   .dc-producers__steps ol {
     grid-template-columns: repeat(2, 1fr);
