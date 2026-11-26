@@ -127,3 +127,11 @@ const EDITABLE = ['description', 'onHand', 'pricePerPound', 'poundsPerPackage', 
 export function isDirty(saved, draft) {
   return EDITABLE.some(key => String(saved[key] ?? '') !== String(draft[key] ?? ''))
 }
+// Packages still available per part (on hand minus held), for the "Inventory across the animal" bars.
+export function availableByPart(cuts) {
+  const totals = new Map()
+  for (const cut of cuts) totals.set(cut.part, (totals.get(cut.part) ?? 0) + availableOf(cut))
+  const known = PARTS.filter((part) => totals.has(part))
+  const other = [...totals.keys()].filter((part) => !PARTS.includes(part))
+  return [...known, ...other].map((part) => ({ part, available: totals.get(part) }))
+}
