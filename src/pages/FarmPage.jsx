@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
-import { useParams, Link } from "react-router-dom";
+import { useParams, useSearchParams, Link } from "react-router-dom";
+import { readDemoFarm } from "../profile/profileApi";
 import { useNavigation } from "../navigation/useNavigation";
 import { contentFor } from "../lib/products";
 import { supabase } from "../lib/supabase";
@@ -20,9 +21,10 @@ const asUrl = (v) =>
   typeof v === "string" && /^(https?:|data:|blob:)/.test(v.trim()) ? v.trim() : null;
 
 // 0 = Sun, 1 = Mon, 2 = Tue, 3 = Wed, 4 = Thu, 5 = Fri, 6 = Sat
-function getNextDeliveryDate(weekdays, from = new Date()) {
+function getNextDeliveryDate(weekdays, leadDays = 1, from = new Date()) {
   if (!weekdays || weekdays.length === 0) return null;
-  for (let offset = 1; offset <= 7; offset++) {
+  const firstDay = Math.max(1, Number(leadDays) || 1);
+  for (let offset = firstDay; offset < firstDay + 7; offset++) {
     const d = new Date(from);
     d.setHours(0, 0, 0, 0);
     d.setDate(d.getDate() + offset);
@@ -54,10 +56,11 @@ function formatMoney(value) {
 // Supabase farms columns -> what the page renders.
 // Columns that don't exist in farms yet (delivery_zips, delivery_weekdays,
 // delivery_fee, photos) are still read, so adding them later just works.
-function mapFarmRow(row) {
+function mapFarmRow(row, zip) {
+  const zone = row.delivery_zones?.find(z => z.zip_codes?.includes(zip));
   // Next delivery: from delivery_weekdays if you add it, otherwise
   // today + the farm's lead time.
-  const weekdays = row.delivery_weekdays ?? [];
+  const weekdays = zone ? dayNamesToWeekdays(zone.delivery_days) : row.delivery_weekdays ?? [];
   const leadDays = row.delivery_lead_time_days;
   const leadDate =
     leadDays != null
@@ -77,14 +80,14 @@ function mapFarmRow(row) {
     town: [row.town, row.state].filter(Boolean).join(", "),
     owners: row.owner_names ?? "",
     founded: row.year_founded ?? null,
-    story: row.story || row.short_description || "",
+    story: row.story ?? row.short_description ?? "",
     tags: row.practices ?? [],
-    photos: (row.photos ?? []).map(asUrl).filter(Boolean),
+    photos: ((row.farm_photos ?? []).slice().sort((a,b) => a.position-b.position).map(p => p.image).concat(row.photos ?? [])).map(asUrl).filter(Boolean),
     delivery: {
       enabled: row.delivery_enabled !== false,
       zips: row.delivery_zips ?? [],
-      nextDate: weekdays.length ? getNextDeliveryDate(weekdays) : leadDate,
-      fee: formatMoney(row.delivery_fee),
+      nextDate: weekdays.length ? getNextDeliveryDate(weekdays, leadDays) : leadDate,
+      fee: formatMoney(zone?.fee ?? row.delivery_fee),
       minimum: formatMoney(row.delivery_minimum == null ? null : Number(row.delivery_minimum)),
     },
     pickupEnabled: row.pickup_enabled !== false,
@@ -129,13 +132,20 @@ function mapCutRow(row) {
   };
 }
 
-async function fetchFarm(id) {
+async function fetchFarm(id, zip, demo) {
   if (!Number.isFinite(id)) return { farm: null, products: [] };
 
+  if (demo) {
+    const row = await readDemoFarm();
+    if (String(row.id) !== String(id)) return { farm: null, products: [] };
+    row.pickups = row.pickup_locations;
+    row.delivery_zips = row.delivery_zones.flatMap(z => z.zip_codes);
+    return { farm: mapFarmRow(row, zip), products: [] };
+  }
   const [farmRes, cutsRes] = await Promise.all([
     supabase
       .from("farms")
-      .select("*, pickups:pickup_locations(*)")
+      .select("*, pickups:pickup_locations(*), delivery_zones(delivery_days,zip_codes,fee), farm_photos(image,position)")
       .eq("id", id)
       .maybeSingle(),
     fetchFarmCuts(id),
@@ -145,7 +155,7 @@ async function fetchFarm(id) {
   if (cutsRes.error) throw cutsRes.error;
   if (!farmRes.data) return { farm: null, products: [] };
 
-  const farm = mapFarmRow(farmRes.data);
+  const farm = mapFarmRow(farmRes.data, zip);
   const products = (cutsRes.data ?? []).map(mapCutRow);
   return { farm, products };
 }
@@ -153,13 +163,15 @@ async function fetchFarm(id) {
 export default function FarmPage() {
   const { zip } = useNavigation();
   const { farmId } = useParams();
+  const [params] = useSearchParams();
+  const demo = params.get("profilePreview") === "demo";
   const [state, setState] = useState({ status: "loading", farm: null, products: [] });
   const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
     setState({ status: "loading", farm: null, products: [] });
-    fetchFarm(parseInt(farmId, 10))
+    fetchFarm(parseInt(farmId, 10), zip, demo)
       .then(({ farm, products }) => {
         if (!cancelled) setState({ status: farm ? "ready" : "notfound", farm, products });
       })
@@ -167,7 +179,7 @@ export default function FarmPage() {
         if (!cancelled) setState({ status: "error", farm: null, products: [] });
       });
     return () => { cancelled = true; };
-  }, [farmId, attempt]);
+  }, [farmId, attempt, zip, demo]);
 
   if (state.status === "notfound") {
     return (
@@ -240,8 +252,8 @@ export default function FarmPage() {
   let noDeliveryTitle;
   let noDeliveryText;
   if (!zip) {
-    noDeliveryTitle = hasPickups ? "Pickup only" : "Delivery";
-    noDeliveryText = "Set your ZIP to see if this farm delivers to you.";
+    noDeliveryTitle = farm.delivery.enabled ? "Delivery" : "Pickup only";
+    noDeliveryText = farm.delivery.enabled ? "Set your ZIP to see if this farm delivers to you." : "This farm offers pickup.";
   } else if (hasPickups) {
     noDeliveryTitle = "Pickup only";
     noDeliveryText = `${farm.name} doesn't deliver to ${zip}. Pickup is available below.`;
@@ -293,8 +305,8 @@ export default function FarmPage() {
 
             {farm.photos.length > 0 && (
               <div className="farm-gallery">
-                {farm.photos.slice(0, 4).map((url) => (
-                  <img key={url} className="farm-gallery__item" src={url} alt="" />
+                {farm.photos.slice(0, 4).map((url, index) => (
+                  <img key={index} className="farm-gallery__item" src={url} alt="" />
                 ))}
               </div>
             )}
