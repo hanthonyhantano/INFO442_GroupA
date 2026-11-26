@@ -53,7 +53,7 @@ function toProduct(row, stock) {
     // Local assets/meat image first (these worked before), then Supabase if it's a real URL
     photoUrl: storageUrl(row.photo, "produtcut-photos") || content.photoUrl,
     pricePerLb: Number(row.price_per_pound) || 0,
-    // Same stock rule as the cart (CartContext stockFor)
+    // Same stock rule as the cart 
     inStock: availablePackages(row, stock),
     defaultSize,
     packSizes,

@@ -4,7 +4,7 @@ import { readDemoFarm } from "../profile/profileApi";
 import { useNavigation } from "../navigation/useNavigation";
 import { contentFor } from "../lib/products";
 import { supabase } from "../lib/supabase";
-import { stockFor } from "../cart/CartContext";
+
 // Farm images come from the Supabase "farm_photos" storage bucket.
 import { storageUrl, fallbackFarmLogo, fallbackFarmCover } from "../lib/farmPhotos";
 import { availablePackages, loadStock } from "../lib/cutAvailability";
