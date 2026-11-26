@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   availableOf, rowStatus, filterCuts, chipCounts, headerTotals,
+  availableByPart,
   onHandByPart, groupCuts, validateCut, isDirty,
 } from './inventory.js'
 
@@ -106,4 +107,13 @@ describe('isDirty', () => {
   it('is false when nothing changed', () => expect(isDirty(saved, { ...saved })).toBe(false))
   it('is false when a number is typed as text', () => expect(isDirty(saved, { ...saved, onHand: '18' })).toBe(false))
   it('is true when a field changed', () => expect(isDirty(saved, { ...saved, isLive: false })).toBe(true))
+})
+
+describe('availableByPart', () => {
+  it('sums available packages per part for the bars', () => {
+    expect(availableByPart(cuts)).toEqual([
+      { part: 'Chuck', available: 42 }, { part: 'Plate', available: 16 },
+      { part: 'Shank', available: 14 }, { part: 'Tail', available: 8 },
+    ])
+  })
 })

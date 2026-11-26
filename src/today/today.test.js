@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import {
-  attentionLine, buildTasks, filterTasks, formatAge, greeting, nextProcessing,
-  orderShortages, splitTasks, taskCounts, weekStats,
+  attentionLine, buildTasks, daysUntil, filterTasks, formatAge, greeting, nextProcessing,
+  orderShortages, processingProgress, splitTasks, taskCounts, weekStats,
 } from './today.js'
 
 const cut = (id, name, onHand, held, isLive = true, batchCode = 'LF-0912') => ({
@@ -141,5 +141,18 @@ describe('weekStats and nextProcessing', () => {
   it('returns null when nothing is scheduled', () => {
     expect(nextProcessing(batches, '2026-12-16')).toBeNull()
     expect(nextProcessing([], '2026-11-19')).toBeNull()
+  })
+})
+
+describe('processing progress', () => {
+  const batch = { createdAt: '2026-11-05T12:00:00', processingDate: '2026-11-25' }
+  it('is halfway at the midpoint', () => expect(processingProgress(batch, '2026-11-15')).toBe(0.5))
+  it('stays between 0 and 1', () => {
+    expect(processingProgress(batch, '2026-10-01')).toBe(0)
+    expect(processingProgress(batch, '2026-12-25')).toBe(1)
+  })
+  it('counts days', () => expect(daysUntil('2026-11-20', '2026-11-19')).toBe(1))
+  it('has no progress without a start date', () => {
+    expect(processingProgress({ processingDate: '2026-11-25' }, '2026-11-15')).toBeNull()
   })
 })

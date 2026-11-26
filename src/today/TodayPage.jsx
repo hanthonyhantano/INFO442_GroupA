@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useNavigation } from '../navigation/useNavigation'
-import { loadToday, setTaskDone } from './todayApi'
+import { loadToday, setTaskDone, subscribeToChanges } from './todayApi'
 import {
-  FILTERS, attentionLine, filterTasks, formatAge, greeting, nextProcessing, splitTasks, taskCounts, weekStats,
+  FILTERS, attentionLine, daysUntil, filterTasks, formatAge, greeting, nextProcessing,
+  processingProgress, splitTasks, taskCounts, weekStats,
 } from './today'
 import './today.css'
 
@@ -12,6 +13,11 @@ const money = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD
 function shortDate(iso) {
   const [year, month, day] = iso.split('-').map(Number)
   return new Date(year, month - 1, day).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+}
+function daysLabel(days) {
+  if (days <= 0) return 'Today'
+  if (days === 1) return 'Tomorrow'
+  return 'In ' + days + ' days'
 }
 
 export default function TodayPage() {
@@ -24,18 +30,29 @@ export default function TodayPage() {
 
   useEffect(() => {
     let cancelled = false
+    const apply = (result) => {
+      if (cancelled) return
+      setData(result)
+      setTasks(result.tasks)
+      setStatus('ready')
+    }
     loadToday()
-      .then((result) => {
-        if (cancelled) return
-        setData(result)
-        setTasks(result.tasks)
-        setStatus('ready')
-      })
+      .then(apply)
       .catch((error) => {
         console.error('Today failed to load:', error)
         if (!cancelled) setStatus('error')
       })
-    return () => { cancelled = true }
+    // Reload quietly when orders or stock change, and when you come back to this tab.
+    const refresh = () => {
+      loadToday().then(apply).catch((error) => console.error('Today refresh failed:', error))
+    }
+    const stop = subscribeToChanges(refresh)
+    window.addEventListener('focus', refresh)
+    return () => {
+      cancelled = true
+      stop()
+      window.removeEventListener('focus', refresh)
+    }
   }, [])
 
   const { open, completed } = useMemo(
@@ -49,6 +66,8 @@ export default function TodayPage() {
     () => (data ? nextProcessing(data.batches, new Date().toLocaleDateString('en-CA')) : null),
     [data],
   )
+  const todayIso = new Date().toLocaleDateString('en-CA')
+  const progress = next ? processingProgress(next, todayIso) : null
 
   async function toggle(task) {
     const done = !task.isCompleted
@@ -147,10 +166,25 @@ export default function TodayPage() {
         <section className="today-card" aria-label="Next processing date">
           <h3>NEXT PROCESSING DATE</h3>
           {next ? (
+                      <>
             <p>
               <strong>{shortDate(next.processingDate)}</strong>
               {next.processorName ? ' · ' + next.processorName : ''}
             </p>
+            {progress !== null && (
+              <div
+                className="today-progress"
+                role="progressbar"
+                aria-label="Time until processing"
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={Math.round(progress * 100)}
+              >
+                <span style={{ width: Math.round(progress * 100) + '%' }} />
+              </div>
+            )}
+            <small className="today-days">{daysLabel(daysUntil(next.processingDate, todayIso))}</small>
+          </>
           ) : (
             <p>No processing date scheduled.</p>
           )}

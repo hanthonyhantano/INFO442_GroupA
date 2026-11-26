@@ -183,3 +183,23 @@ export function nextProcessing(batches, todayIso) {
     .sort((a, b) => a.processingDate.localeCompare(b.processingDate))
   return upcoming[0] ?? null
 }
+
+// Whole-day number for a "YYYY-MM-DD" date, so daylight saving can't skew the math.
+function dayNumber(isoDate) {
+  const [year, month, day] = isoDate.slice(0, 10).split('-').map(Number)
+  return Date.UTC(year, month - 1, day) / 86400000
+}
+
+// Whole days from today to a date; 0 means today.
+export function daysUntil(isoDate, todayIso) {
+  return dayNumber(isoDate) - dayNumber(todayIso)
+}
+
+// How far along a batch is between the day it was created and its processing date, from 0 to 1.
+export function processingProgress(batch, todayIso) {
+  if (!batch?.processingDate || !batch.createdAt) return null
+  const start = dayNumber(new Date(batch.createdAt).toLocaleDateString('en-CA'))
+  const total = dayNumber(batch.processingDate) - start
+  if (total <= 0) return 1
+  return Math.min(1, Math.max(0, (dayNumber(todayIso) - start) / total))
+}

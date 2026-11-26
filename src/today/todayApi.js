@@ -101,7 +101,7 @@ async function load() {
       .select('id, order_number, status, created_at, order_items(cut_id, quantity, reserved_quantity, price_per_pound, pounds_per_package)')
       .eq('farm_id', farm.id)
       .in('status', ['new', 'confirmed']),
-    supabase.from('batches').select('id, batch_code, processing_date, processor_name').eq('farm_id', farm.id),
+    supabase.from('batches').select('id, batch_code, processing_date, processor_name, created_at').eq('farm_id', farm.id),
     supabase.from('tasks').select('*').eq('farm_id', farm.id),
   ])
   for (const result of [cutsResult, stockResult, ordersResult, batchesResult, tasksResult]) {
@@ -136,6 +136,7 @@ async function load() {
     batchCode: batch.batch_code,
     processingDate: batch.processing_date,
     processorName: batch.processor_name,
+    createdAt: batch.created_at,
   }))
   const batchIdByCode = new Map(batches.map((batch) => [batch.batchCode, batch.id]))
 
@@ -161,4 +162,23 @@ export async function setTaskDone(rowId, done) {
     .update({ is_completed: done, completed_at: done ? new Date().toISOString() : null })
     .eq('id', rowId)
   if (error) throw error
+}
+
+/** Calls onChange (debounced) whenever orders, order lines or cuts change in the database. */
+export function subscribeToChanges(onChange) {
+  let timer = null
+  const trigger = () => {
+    clearTimeout(timer)
+    timer = setTimeout(onChange, 300)
+  }
+  const channel = supabase
+    .channel('today-' + Math.random().toString(36).slice(2))
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, trigger)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'order_items' }, trigger)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'cuts' }, trigger)
+    .subscribe()
+  return () => {
+    clearTimeout(timer)
+    supabase.removeChannel(channel)
+  }
 }

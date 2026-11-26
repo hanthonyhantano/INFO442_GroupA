@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { createCut, fetchInventory, saveCut } from './inventoryApi'
 import {
-  CHIPS, availableOf, chipCounts, filterCuts, groupCuts, headerTotals, isDirty, onHandByPart, rowStatus, validateCut,
+  CHIPS, availableOf, chipCounts, filterCuts, groupCuts, headerTotals, isDirty, availableByPart, rowStatus, validateCut,
 } from './inventory'
 import EditPanel from './EditPanel'
 import CowDiagram from '../discovery/CowDiagram'
@@ -100,7 +100,7 @@ export default function InventoryPage({assignedFarmId}) {
 
   const totals = useMemo(() => headerTotals(cuts), [cuts])
   const counts = useMemo(() => chipCounts(cuts), [cuts])
-  const bars = useMemo(() => onHandByPart(cuts), [cuts])
+  const bars = useMemo(() => availableByPart(cuts), [cuts])
   const linkedCuts = useMemo(
     () => cuts.filter((cut) =>
       (!linkBatch || String(cut.batchId) === linkBatch) &&
@@ -231,7 +231,7 @@ export default function InventoryPage({assignedFarmId}) {
   if (status === 'loading') return <p className="inv-message">Loading inventory…</p>
   if (status === 'error') return <p className="inv-message" role="alert">Something went wrong. Try again.</p>
 
-  const maxOnHand = Math.max(...bars.map((bar) => bar.onHand), 1)
+  const maxAvailable = Math.max(...bars.map((bar) => bar.available), 1)
 
   return (
     <div className={panelOpen ? 'inv-layout has-panel' : 'inv-layout'}>
@@ -284,7 +284,7 @@ export default function InventoryPage({assignedFarmId}) {
                   <CowDiagram selected={part} onSelect={togglePart} />
                 </div>
                 <ul>
-                  {bars.map(({ part: name, onHand }) => (
+                  {bars.map(({ part: name, available }) => (
                     <li key={name}>
                       <button
                         type="button"
@@ -293,8 +293,8 @@ export default function InventoryPage({assignedFarmId}) {
                         onClick={() => togglePart(name)}
                       >
                         <span className="inv-bar-label">{name}</span>
-                        <span className="inv-bar"><span style={{ width: (onHand / maxOnHand) * 100 + '%' }} /></span>
-                        <span className="inv-bar-count">{onHand}</span>
+                        <span className="inv-bar"><span style={{ width: (available / maxAvailable) * 100 + '%' }} /></span>
+                        <span className="inv-bar-count">{available}</span>
                       </button>
                     </li>
                   ))}
