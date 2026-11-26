@@ -3,7 +3,7 @@ import { useParams, Link } from "react-router-dom";
 import { useNavigation } from "../navigation/useNavigation";
 import { contentFor } from "../lib/products";
 import { supabase } from "../lib/supabase";
-import { stockFor } from "../cart/CartContext";
+import { availablePackages, loadStock } from "../lib/cutAvailability";
 
 import farm1 from "../assets/farm/farm1.jpg";
 import farm2 from "../assets/farm/farm2.jpg";
@@ -102,6 +102,19 @@ function mapFarmRow(row) {
   };
 }
 
+async function fetchFarmCuts(farmId) {
+  const result = await supabase.from("cuts")
+    .select("id, name, photo, price_per_pound, pounds_per_package, is_live")
+    .eq("farm_id", farmId)
+    .eq("is_live", true)
+    .order("name");
+  if (result.error) return result;
+  const stock = await loadStock(supabase, result.data.map(row => row.id));
+  return { data: result.data.map(row => ({
+    ...row, availablePackages: availablePackages(row, stock.get(row.id)),
+  })) };
+}
+
 // A Supabase cuts row -> what a product card needs. Same sources as the
 // product page: id/price/stock/weight from Supabase, image local-first.
 function mapCutRow(row) {
@@ -112,7 +125,7 @@ function mapCutRow(row) {
     photoUrl: content.photoUrl || asUrl(row.photo),
     pricePerLb: Number(row.price_per_pound) || 0,
     defaultSize: Number(row.pounds_per_package) || content.defaultSize,
-    availablePackages: stockFor(row),
+    availablePackages: row.availablePackages,
   };
 }
 
@@ -125,11 +138,7 @@ async function fetchFarm(id) {
       .select("*, pickups:pickup_locations(*)")
       .eq("id", id)
       .maybeSingle(),
-    supabase
-      .from("cuts")
-      .select("id, name, photo, price_per_pound, pounds_per_package, packages_on_hand, is_live")
-      .eq("farm_id", id)
-      .order("name"),
+    fetchFarmCuts(id),
   ]);
 
   if (farmRes.error) throw farmRes.error;
