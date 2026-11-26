@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useNavigation } from '../navigation/useNavigation'
-import { loadToday, setTaskDone } from './todayApi'
+import { loadToday, setTaskDone, subscribeToChanges } from './todayApi'
 import {
   FILTERS, attentionLine, daysUntil, filterTasks, formatAge, greeting, nextProcessing,
   processingProgress, splitTasks, taskCounts, weekStats,
@@ -30,18 +30,29 @@ export default function TodayPage() {
 
   useEffect(() => {
     let cancelled = false
+    const apply = (result) => {
+      if (cancelled) return
+      setData(result)
+      setTasks(result.tasks)
+      setStatus('ready')
+    }
     loadToday()
-      .then((result) => {
-        if (cancelled) return
-        setData(result)
-        setTasks(result.tasks)
-        setStatus('ready')
-      })
+      .then(apply)
       .catch((error) => {
         console.error('Today failed to load:', error)
         if (!cancelled) setStatus('error')
       })
-    return () => { cancelled = true }
+    // Reload quietly when orders or stock change, and when you come back to this tab.
+    const refresh = () => {
+      loadToday().then(apply).catch((error) => console.error('Today refresh failed:', error))
+    }
+    const stop = subscribeToChanges(refresh)
+    window.addEventListener('focus', refresh)
+    return () => {
+      cancelled = true
+      stop()
+      window.removeEventListener('focus', refresh)
+    }
   }, [])
 
   const { open, completed } = useMemo(

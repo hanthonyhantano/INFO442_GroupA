@@ -163,3 +163,22 @@ export async function setTaskDone(rowId, done) {
     .eq('id', rowId)
   if (error) throw error
 }
+
+/** Calls onChange (debounced) whenever orders, order lines or cuts change in the database. */
+export function subscribeToChanges(onChange) {
+  let timer = null
+  const trigger = () => {
+    clearTimeout(timer)
+    timer = setTimeout(onChange, 300)
+  }
+  const channel = supabase
+    .channel('today-' + Math.random().toString(36).slice(2))
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, trigger)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'order_items' }, trigger)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'cuts' }, trigger)
+    .subscribe()
+  return () => {
+    clearTimeout(timer)
+    supabase.removeChannel(channel)
+  }
+}
