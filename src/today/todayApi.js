@@ -101,7 +101,7 @@ async function load() {
       .select('id, order_number, status, created_at, order_items(cut_id, quantity, reserved_quantity, price_per_pound, pounds_per_package)')
       .eq('farm_id', farm.id)
       .in('status', ['new', 'confirmed']),
-    supabase.from('batches').select('id, batch_code, processing_date, processor_name').eq('farm_id', farm.id),
+    supabase.from('batches').select('id, batch_code, processing_date, processor_name, created_at').eq('farm_id', farm.id),
     supabase.from('tasks').select('*').eq('farm_id', farm.id),
   ])
   for (const result of [cutsResult, stockResult, ordersResult, batchesResult, tasksResult]) {
@@ -136,6 +136,7 @@ async function load() {
     batchCode: batch.batch_code,
     processingDate: batch.processing_date,
     processorName: batch.processor_name,
+    createdAt: batch.created_at,
   }))
   const batchIdByCode = new Map(batches.map((batch) => [batch.batchCode, batch.id]))
 
