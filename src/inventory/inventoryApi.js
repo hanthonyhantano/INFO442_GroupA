@@ -5,7 +5,7 @@ import { storageUrl } from '../lib/farmPhotos.js'
 export const DEMO_FARM_SLUG = 'lorem-ranch'
 
 const CUT_COLUMNS =
-  'id, name, description, photo, price_per_pound, pounds_per_package, packages_on_hand, is_live, is_featured, batches(batch_code), cow_parts(name)'
+  'id, batch_id, cow_part_id, name, description, photo, price_per_pound, pounds_per_package, packages_on_hand, is_live, is_featured, batches(batch_code), cow_parts(name)'
 
 // Database columns are snake_case; the page uses camelCase.
 function toCut(row, held) {
@@ -15,6 +15,8 @@ function toCut(row, held) {
     description: row.description ?? '',
     photo: storageUrl(row.photo, 'produtcut-photos'),
     part: row.cow_parts?.name ?? '',
+    partId: row.cow_part_id ?? null,
+    batchId: row.batch_id ?? null,
     batchCode: row.batches?.batch_code ?? '',
     pricePerPound: Number(row.price_per_pound),
     poundsPerPackage: Number(row.pounds_per_package),

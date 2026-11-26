@@ -9,19 +9,19 @@ import { supabase } from "../lib/supabase";
 import { storageUrl, fallbackFarmLogo, fallbackFarmCover } from "../lib/farmPhotos";
 import { availablePackages, loadStock } from "../lib/cutAvailability";
 
-import farm1 from "../assets/farm/farm1.jpg";
-import farm2 from "../assets/farm/farm2.jpg";
-import farm3 from "../assets/farm/farm3.jpg";
-import farm4 from "../assets/farm/farm4.jpg";
-import farm7 from "../assets/farm/farm7.jpg";
-
-// Local images, used when a farm has no cover_photo / logo URL in Supabase.
-const DEFAULT_COVER = farm7;
-const LOCAL_LOGOS = { 1: farm1, 2: farm2, 3: farm3, 4: farm4 }; 
-
-// Only use a Supabase image value if it's a full URL the browser can load
-const asUrl = (v) =>
-  typeof v === "string" && /^(https?:|data:|blob:)/.test(v.trim()) ? v.trim() : null;
+// ZIPs can come back from Supabase in many shapes: ["98926"], [98926],
+// "98926, 98922", "{98926,98922}" or '["98926"]'. Pull out every number and
+// compare them as 5-digit strings (so 2108 still matches "02108").
+function normalizeZip(value) {
+  const z = String(value ?? "").trim();
+  return /^\d{1,5}$/.test(z) ? z.padStart(5, "0") : z;
+}
+function zipList(value) {
+  const items = Array.isArray(value) ? value : value == null ? [] : [value];
+  return items
+    .flatMap((item) => String(item).match(/\d{1,5}/g) ?? [])
+    .map(normalizeZip);
+}
 
 // 0 = Sun, 1 = Mon, 2 = Tue, 3 = Wed, 4 = Thu, 5 = Fri, 6 = Sat
 function getNextDeliveryDate(weekdays, leadDays = 1, from = new Date()) {
@@ -45,6 +45,17 @@ function dayNamesToWeekdays(days) {
     .filter((n) => n !== undefined);
 }
 
+// [6, 3] -> "Wednesdays & Saturdays" (Monday-first order); all seven -> "Every day"
+const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+function formatWeekdays(weekdays) {
+  const unique = [...new Set(weekdays)].sort((a, b) => ((a + 6) % 7) - ((b + 6) % 7));
+  if (unique.length === 7) return "Every day";
+  const names = unique.map((d) => `${DAY_NAMES[d]}s`);
+  return names.length > 1
+    ? `${names.slice(0, -1).join(", ")} & ${names[names.length - 1]}`
+    : names[0];
+}
+
 function formatDeliveryDate(date) {
   return date.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
 }
@@ -60,7 +71,14 @@ function formatMoney(value) {
 // Columns that don't exist in farms yet (delivery_zips, delivery_weekdays,
 // delivery_fee, photos) are still read, so adding them later just works.
 function mapFarmRow(row, zip) {
-  const zone = row.delivery_zones?.find(z => z.zip_codes?.includes(zip));
+  const shopperZip = normalizeZip(zip);
+  const zones = row.delivery_zones ?? [];
+  // Owen's Farm Profile saves delivery areas in delivery_zones; older farms
+  // only have farms.delivery_zips. Use both.
+  const deliveryZips = [
+    ...new Set([...zipList(row.delivery_zips), ...zones.flatMap((z) => zipList(z.zip_codes))]),
+  ];
+  const zone = zones.find((z) => zipList(z.zip_codes).includes(shopperZip));
   // Next delivery: from delivery_weekdays if you add it, otherwise
   // today + the farm's lead time.
   const weekdays = zone ? dayNamesToWeekdays(zone.delivery_days) : row.delivery_weekdays ?? [];
@@ -85,22 +103,32 @@ function mapFarmRow(row, zip) {
     founded: row.year_founded ?? null,
     story: row.story ?? row.short_description ?? "",
     tags: row.practices ?? [],
-    photos: ((row.farm_photos ?? []).slice().sort((a,b) => a.position-b.position).map(p => p.image).concat(row.photos ?? [])).map(asUrl).filter(Boolean),
+    photos: (row.farm_photos ?? [])
+      .slice()
+      .sort((a, b) => a.position - b.position)
+      .map((p) => p.image)
+      .concat(row.photos ?? [])
+      .map((p) => storageUrl(p))
+      .filter(Boolean),
     delivery: {
       enabled: row.delivery_enabled !== false,
-      zips: row.delivery_zips ?? [],
+      zips: deliveryZips,
       nextDate: weekdays.length ? getNextDeliveryDate(weekdays, leadDays) : leadDate,
       fee: formatMoney(zone?.fee ?? row.delivery_fee),
       minimum: formatMoney(row.delivery_minimum == null ? null : Number(row.delivery_minimum)),
     },
     pickupEnabled: row.pickup_enabled !== false,
-    pickups: (row.pickups ?? []).map((p) => ({
-      id: p.id,
-      name: p.name,
-      address: p.address ?? "",
-      nextDate: getNextDeliveryDate(dayNamesToWeekdays(p.days)),
-      times: p.times ?? "",
-    })),
+    pickups: (row.pickups ?? []).map((p) => {
+      const weekdays = dayNamesToWeekdays(p.days);
+      return {
+        id: p.id,
+        name: p.name,
+        address: p.address ?? "",
+        days: weekdays.length ? formatWeekdays(weekdays) : "",
+        nextDate: getNextDeliveryDate(weekdays),
+        times: p.times ?? "",
+      };
+    }),
     contact: {
       email: row.contact_email ?? "",
       phone: row.contact_phone ?? "",
@@ -239,8 +267,9 @@ export default function FarmPage() {
 
   const { farm, products } = state;
   const inStock = products.filter((p) => p.availablePackages > 0);
-  const deliversToZip =
-    farm.delivery.enabled && !!zip && farm.delivery.zips.includes(zip);
+  const shopperZip = normalizeZip(zip);
+  const deliversAnywhere = farm.delivery.enabled && farm.delivery.zips.length > 0;
+  const deliversToZip = deliversAnywhere && !!zip && farm.delivery.zips.includes(shopperZip);
   const hasPickups = farm.pickupEnabled && farm.pickups.length > 0;
 
   const nextDelivery = farm.delivery.nextDate;
@@ -255,8 +284,16 @@ export default function FarmPage() {
   let noDeliveryTitle;
   let noDeliveryText;
   if (!zip) {
-    noDeliveryTitle = farm.delivery.enabled ? "Delivery" : "Pickup only";
-    noDeliveryText = farm.delivery.enabled ? "Set your ZIP to see if this farm delivers to you." : "This farm offers pickup.";
+    noDeliveryTitle = deliversAnywhere ? "Delivery" : "Pickup only";
+    noDeliveryText = deliversAnywhere
+      ? "Set your ZIP to see if this farm delivers to you."
+      : "This farm offers pickup.";
+  } else if (deliversAnywhere) {
+    // The farm delivers, just not to this ZIP, so it isn't "pickup only".
+    noDeliveryTitle = `No delivery to ${zip}`;
+    noDeliveryText = hasPickups
+      ? `${farm.name} delivers to other areas. Pickup is available below.`
+      : `${farm.name} delivers to other areas, but not ${zip} yet.`;
   } else if (hasPickups) {
     noDeliveryTitle = "Pickup only";
     noDeliveryText = `${farm.name} doesn't deliver to ${zip}. Pickup is available below.`;
@@ -376,11 +413,14 @@ export default function FarmPage() {
                       <div className="farm-pickup__text">
                         <span className="farm-pickup__name">{p.name}</span>
                         <span className="farm-pickup__detail">{p.address}</span>
-                        {(p.nextDate || p.times) && (
+                        {(p.days || p.times) && (
                           <span className="farm-pickup__detail">
-                            {[p.nextDate && `Next: ${formatDeliveryDate(p.nextDate)}`, p.times]
-                              .filter(Boolean)
-                              .join(" · ")}
+                            {[p.days, p.times].filter(Boolean).join(" · ")}
+                          </span>
+                        )}
+                        {p.nextDate && (
+                          <span className="farm-pickup__detail">
+                            Next: {formatDeliveryDate(p.nextDate)}
                           </span>
                         )}
                       </div>

@@ -12,7 +12,7 @@ const STEPS = [
   },
   {
     title: "Confirm requests",
-    text: "Review incoming orders and confirm the ones you can fill.",
+    text: "Review orders from shoppers near you and confirm the ones you can fill.",
   },
   {
     title: "Deliver or offer pickup",
@@ -20,7 +20,7 @@ const STEPS = [
   },
 ];
 
-const CONTACT_EMAIL = "producers@catcow.example";
+const CONTACT_EMAIL = "catcowsupport@gmail.com";
 
 export default function ForProducers() {
   return (
@@ -32,8 +32,10 @@ export default function ForProducers() {
           <h1 className="dc-producers__eyebrow">For producers</h1>
           <p className="dc-producers__headline">Sell more of every animal.</p>
           <p>
-            Cat Cow helps small ranches find buyers for every cut, not just the
-            steaks, so less of each animal goes to waste.
+            Cat Cow lets small ranches sell beef cuts directly to shoppers
+            nearby, with no distributor in the middle. You set your own prices,
+            keep more of every sale, and find buyers for every cut, not just
+            the steaks.
           </p>
           <div className="dc-producers__actions">
             <Link to="/apply" className="dc-btn dc-btn--primary">

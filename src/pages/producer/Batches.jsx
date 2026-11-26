@@ -20,7 +20,8 @@ function mapCut(c) {
     total: Number(c.total ?? 0),
     sold: Number(c.sold ?? 0),
     held: Number(c.held ?? 0),
-    featured: Boolean(c.featured),
+    // is_featured is the column the shop (catalog.js) and Inventory read
+    featured: Boolean(c.is_featured),
   }
 }
 
@@ -90,7 +91,7 @@ function applyCutChange(batches, payload) {
               total: Number(row.total ?? c.total),
               sold: Number(row.sold ?? c.sold),
               held: Number(row.held ?? c.held),
-              featured: row.featured ?? c.featured,
+              featured: row.is_featured ?? c.featured,
             }
           : c
       ),
@@ -199,7 +200,7 @@ export default function Batches({ farmId }) {
     const value = !allFeatured
     setFeaturing(true)
     setFeatureError(false)
-    const { error } = await supabase.from('cuts').update({ featured: value }).in('id', slowCutIds)
+    const { error } = await supabase.from('cuts').update({ is_featured: value }).in('id', slowCutIds)
     setFeaturing(false)
     if (error) {
       console.error('Featuring cuts failed:', error)

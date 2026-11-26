@@ -5,16 +5,40 @@ import { supabase } from '../lib/supabase'
 
 const MIN_PASSWORD = 8
 
-// "Lorem Ranch" -> "lorem-ranch-3f9a1c" (same format as the sign-up trigger;
-// the random suffix keeps slugs unique)
-function makeSlug(name) {
-  const base = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'farm'
-  return `${base}-${Math.random().toString(16).slice(2, 8)}`
+// Creates the signed-in user's farm and records its id in their trusted
+// app_metadata.farm_id (see supabase/migrations/20261126_producer_signup.sql).
+// The database function returns the existing farm if they already have one.
+// Refreshing the session puts the new farm_id into the user's token, which is
+// what LiveNavigation and the producer pages read.
+async function setUpRanch(name, farmName) {
+  const { error: rpcFailure } = await supabase.rpc('create_my_farm', {
+    farm_name: farmName,
+    producer_name: name || null,
+  })
+  if (rpcFailure) throw rpcFailure
+  const { error: refreshFailure } = await supabase.auth.refreshSession()
+  if (refreshFailure) throw refreshFailure
 }
 
-// /apply: producers create their account (and ranch) here.
-// If someone is already signed in but has no ranch yet (for example they
-// signed in with Google), it shows a short "add your ranch" form instead.
+// Turns Supabase errors into something a person can act on.
+function friendlyError(err) {
+  const msg = String(err?.message ?? '').toLowerCase()
+  if (msg.includes('registered') || msg.includes('already')) {
+    return 'An account with that email already exists. Try signing in.'
+  }
+  if (msg.includes('invalid') && msg.includes('email')) {
+    return "Supabase won't accept that email address. Use a real inbox you can check."
+  }
+  if (msg.includes('password')) return err.message
+  if (msg.includes('rate limit') || msg.includes('too many')) {
+    return 'Too many sign-up attempts. Wait a few minutes and try again.'
+  }
+  return `Could not create your account: ${err?.message ?? 'unknown error'}`
+}
+
+// /apply: producers create their account and ranch here.
+// Signed in with no ranch yet (e.g. Google sign-in, or confirmed their
+// email after signing up)? It shows a short "Add your ranch" form instead.
 export default function Apply() {
   const { session } = useNavigation()
   const signedIn = session?.user?.id && !session.user.is_anonymous
@@ -52,26 +76,31 @@ function CreateAccount() {
         email,
         password,
         options: {
-          // Read by the database trigger to create the profile and farm
+          // Saved on the account so "Add your ranch" can prefill it later
           data: { name, farm_name: farmName },
-          // Where the confirmation email link sends them
           emailRedirectTo: `${window.location.origin}/producer/profile`,
         },
       })
       if (failure) throw failure
 
       if (data.session) {
-        navigate('/producer/profile', { replace: true }) // confirmation off
+        // Signed in right away (Confirm email is off): create the ranch now.
+        try {
+          await setUpRanch(name, farmName)
+        } catch (err) {
+          // Account exists; they'll finish on the "Add your ranch" form.
+          console.error('Ranch setup failed:', err)
+        }
+        navigate('/producer/profile', { replace: true })
       } else {
-        setCheckEmail(email) // confirmation on: they must click the link
+        // Confirm email is on. After they click the link and land on
+        // /producer/profile, RequireProducer sends them to /apply, where
+        // "Add your ranch" is already filled in.
+        setCheckEmail(email)
       }
     } catch (err) {
       console.error('Sign up failed:', err)
-      setError(
-        err?.message?.toLowerCase().includes('registered')
-          ? 'An account with that email already exists. Try signing in.'
-          : 'Could not create your account. Please try again.'
-      )
+      setError(friendlyError(err))
     } finally {
       setBusy(false)
     }
@@ -141,9 +170,9 @@ function CreateAccount() {
   )
 }
 
-// Signed in, no ranch yet. Also what stops a redirect loop:
-// RequireProducer sends farm-less users here, and this page never
-// redirects them back.
+// Signed in, no ranch yet. This page never redirects signed-in users on
+// its own, which prevents a loop with RequireProducer (which sends users
+// without app_metadata.farm_id here).
 function AddRanch({ user }) {
   const navigate = useNavigate()
   const [busy, setBusy] = useState(false)
@@ -153,40 +182,14 @@ function AddRanch({ user }) {
     event.preventDefault()
     if (busy) return
     const fields = new FormData(event.currentTarget)
-    const farmName = String(fields.get('farm_name')).trim()
-    const name = String(fields.get('name')).trim()
-
     setBusy(true)
     setError('')
     try {
-      // Already has a ranch? Go straight to the dashboard.
-      const { data: existing, error: readFailure } = await supabase
-        .from('profiles')
-        .select('farm_id')
-        .eq('id', user.id)
-        .maybeSingle()
-      if (readFailure) throw readFailure
-      if (existing?.farm_id) {
-        navigate('/producer/profile', { replace: true })
-        return
-      }
-
-      const { data: farm, error: farmFailure } = await supabase
-        .from('farms')
-        .insert({ name: farmName, slug: makeSlug(farmName), contact_email: user.email })
-        .select('id')
-        .single()
-      if (farmFailure) throw farmFailure
-
-      const { error: profileFailure } = await supabase
-        .from('profiles')
-        .upsert({ id: user.id, name: name || null, farm_id: farm.id })
-      if (profileFailure) throw profileFailure
-
+      await setUpRanch(String(fields.get('name')).trim(), String(fields.get('farm_name')).trim())
       navigate('/producer/profile', { replace: true })
     } catch (err) {
       console.error('Adding ranch failed:', err)
-      setError('Could not save your ranch. Please try again.')
+      setError(`Could not save your ranch: ${err?.message ?? 'unknown error'}`)
     } finally {
       setBusy(false)
     }

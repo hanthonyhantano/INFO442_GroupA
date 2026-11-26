@@ -1,6 +1,6 @@
 import { storageUrl } from '../lib/farmPhotos'
 import { useEffect, useMemo, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { createCut, fetchInventory, saveCut } from './inventoryApi'
 import {
   CHIPS, availableOf, chipCounts, filterCuts, groupCuts, headerTotals, isDirty, onHandByPart, rowStatus, validateCut,
@@ -63,6 +63,11 @@ function CutRow({ cut, selected, onSelect }) {
 }
 
 export default function InventoryPage({assignedFarmId}) {
+  // Batches "View cuts" links here as ?batch=<id>&parts=<id>,<id>
+  const [params, setParams] = useSearchParams()
+  const linkBatch = params.get('batch')
+  const linkParts = (params.get('parts') ?? '').split(',').filter(Boolean)
+  const linkActive = Boolean(linkBatch || linkParts.length)
   const [farmId, setFarmId] = useState(null)
   const [cuts, setCuts] = useState([])
   const [partOptions, setPartOptions] = useState([])
@@ -96,10 +101,23 @@ export default function InventoryPage({assignedFarmId}) {
   const totals = useMemo(() => headerTotals(cuts), [cuts])
   const counts = useMemo(() => chipCounts(cuts), [cuts])
   const bars = useMemo(() => onHandByPart(cuts), [cuts])
-  const groups = useMemo(
-    () => groupCuts(filterCuts(cuts, { search, chip, part })),
-    [cuts, search, chip, part],
+  const linkedCuts = useMemo(
+    () => cuts.filter((cut) =>
+      (!linkBatch || String(cut.batchId) === linkBatch) &&
+      (linkParts.length === 0 || linkParts.includes(String(cut.partId)))),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [cuts, linkBatch, linkParts.join(',')],
   )
+  const groups = useMemo(
+    () => groupCuts(filterCuts(linkedCuts, { search, chip, part })),
+    [linkedCuts, search, chip, part],
+  )
+  const linkLabel = linkActive
+    ? [
+        linkBatch && (cuts.find((cut) => String(cut.batchId) === linkBatch)?.batchCode || 'this batch'),
+        [...new Set(linkedCuts.map((cut) => cut.part).filter(Boolean))].join(', '),
+      ].filter(Boolean).join(' · ')
+    : ''
 
   const isNew = selectedId === NEW
   const panelOpen = selectedId !== null && draft !== null
@@ -236,6 +254,15 @@ export default function InventoryPage({assignedFarmId}) {
           <p className="inv-message">No cuts yet. Import a cut sheet or add a cut.</p>
         ) : (
           <>
+            {linkActive && (
+              <p className="inv-message" role="status">
+                Showing {linkLabel || 'selected cuts'}.{' '}
+                <button type="button" className="inv-button" onClick={() => setParams({}, { replace: true })}>
+                  Show all cuts
+                </button>
+              </p>
+            )}
+
             <div className="inv-chips" role="group" aria-label="Filter cuts">
               {CHIPS.map(({ key, label }) => (
                 <button
