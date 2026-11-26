@@ -16,6 +16,9 @@ vi.mock('../inventory/inventoryApi', () => ({
   saveCut: vi.fn(),
 }))
 
+// Batches opens a live Supabase connection, which the test browser can't run.
+vi.mock('../pages/producer/Batches', () => ({ default: () => null }))
+
 vi.mock('../cart/CartContext', () => ({
   CartProvider: ({ children }) => children,
   useCart: () => ({ items: [], notices: [], loading: false, error: null, subtotal: 0 }),

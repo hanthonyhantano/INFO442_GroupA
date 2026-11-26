@@ -8,6 +8,7 @@ import {
 } from "@react-google-maps/api";
 import { useNavigation } from "../navigation/useNavigation";
 import { fetchFarmList as fetchFarms, fetchZipCenter, normalizeZip } from "../lib/farmsApi";
+import { storageUrl, fallbackFarmLogo } from "../lib/farmPhotos";
 
 const DEFAULT_CENTER = { lat: 47.655, lng: -122.303 };
 const METERS_PER_MILE = 1609.34;
@@ -65,7 +66,7 @@ function toLatLng(center) {
   return Number.isFinite(lat) && Number.isFinite(lng) ? { lat, lng } : null;
 }
 
-export default function FarmsPage() {
+export default function Farms() {
   const { zip } = useNavigation();
 
   const { isLoaded, loadError } = useJsApiLoader({
@@ -182,15 +183,17 @@ export default function FarmsPage() {
 
   const deliverCount = results.filter((farm) => deliversTo(farm, zip)).length;
   const hoveredFarm = results.find((farm) => farm.id === hoveredId) || null;
+  const selectedFarm = results.find((farm) => farm.id === selectedId) || null;
 
-  const circleFarm = hoveredFarm;
+  // Hovering previews a farm's delivery area; otherwise keep showing the selected one.
+  const circleFarm = hoveredFarm ?? selectedFarm;
 
   const mapCenter = useMemo(() => origin ?? DEFAULT_CENTER, [origin]);
 
   const [map, setMap] = useState(null);
 
-  const hoverLat = hoveredFarm ? Number(hoveredFarm.lat) : null;
-  const hoverLng = hoveredFarm ? Number(hoveredFarm.lng) : null;
+  const hoverLat = circleFarm ? Number(circleFarm.lat) : null;
+  const hoverLng = circleFarm ? Number(circleFarm.lng) : null;
 
   useEffect(() => {
     if (!map || hoverLat == null || hoverLng == null) return;
@@ -292,7 +295,9 @@ export default function FarmsPage() {
               </div>
             ) : (
               <ul className="farms-list">
-                {results.map((farm) => (
+                {results.map((farm) => {
+                  const thumb = storageUrl(farm.photo) || fallbackFarmLogo(farm.id);
+                  return (
                   <li key={farm.id}>
                     <Link
                       to={`/farms/${farm.id}`}
@@ -303,8 +308,8 @@ export default function FarmsPage() {
                       onFocus={() => setHoveredId(farm.id)}
                       onBlur={() => setHoveredId(null)}
                     >
-                      {farm.photo ? (
-                        <img className="farms-row__thumb" src={farm.photo} alt="" />
+                      {thumb ? (
+                        <img className="farms-row__thumb" src={thumb} alt="" style={{ objectFit: "cover" }} />
                       ) : (
                         <div className="farm-placeholder farms-row__thumb" />
                       )}
@@ -321,7 +326,8 @@ export default function FarmsPage() {
                       <span className="farms-row__chevron" aria-hidden="true">›</span>
                     </Link>
                   </li>
-                ))}
+                  );
+                })}
               </ul>
             ))}
         </section>
@@ -340,6 +346,7 @@ export default function FarmsPage() {
               zoom={9}
               onLoad={setMap}
               onUnmount={() => setMap(null)}
+              onClick={() => setSelectedId(null)}
             >
               {circleFarm && hasCoords(circleFarm) && circleFarm.deliveryRadiusMiles != null && (
                 <Circle
@@ -358,13 +365,14 @@ export default function FarmsPage() {
 
               {results.filter(hasCoords).map((farm) => {
                 const hovered = farm.id === hoveredId;
+                const selected = farm.id === selectedId;
                 return (
                   <Marker
                     key={farm.id}
                     position={{ lat: Number(farm.lat), lng: Number(farm.lng) }}
                     title={farm.name}
                     animation={hovered ? window.google.maps.Animation.BOUNCE : null}
-                    zIndex={hovered ? 999 : undefined}
+                    zIndex={hovered || selected ? 999 : undefined}
                     onClick={() => setSelectedId(farm.id)}
                   />
                 );

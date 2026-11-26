@@ -128,8 +128,8 @@ export default function Cart() {
             <span>{formatMoney(subtotal)}</span>
           </div>
           <div className="cart-summary-row">
-            <span>Delivery to {zip}</span>
-            <span>Set by each farm</span>
+            <span>{zip ? `Delivery to ${zip}` : "Delivery"}</span>
+            <span>{zip ? "Set by each farm" : "Set your ZIP to see options"}</span>
           </div>
 
           <div className="cart-summary-total">

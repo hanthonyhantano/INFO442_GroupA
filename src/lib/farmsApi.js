@@ -1,14 +1,12 @@
 import { supabase } from "./supabase.js";
-import farm1 from "../assets/farm/farm1.jpg";
-import farm2 from "../assets/farm/farm2.jpg";
-import farm3 from "../assets/farm/farm3.jpg";
-import farm4 from "../assets/farm/farm4.jpg";
+// Farm images live in the Supabase "farm_photos" storage bucket (not a table).
+import { storageUrl, fallbackFarmLogo, fallbackFarmCover } from "./farmPhotos.js";
 
 const LIST_COLUMNS =
   "id, name, map_label, town, photo_url, lat, lng, delivery_zips, delivery_radius_miles, pickup, tags";
 
-const LOCAL_FARM_IMAGES = { 1: farm1, 2: farm2, 3: farm3, 4: farm4 };
-const LIVE_SELECT = "*, delivery_zones(*), pickup_locations(*), farm_photos(*)";
+// farm_photos is a storage bucket, not a table, so it can't be joined here.
+const LIVE_SELECT = "*, delivery_zones(*), pickup_locations(*)";
 const DAY_INDEX = { sun: 0, mon: 1, tue: 2, wed: 3, thu: 4, fri: 5, sat: 6 };
 
 
@@ -147,7 +145,9 @@ function nextDeliveryDate(zones, leadDays = 0) {
 
 function toLiveFarm(row) {
   const zones = row.delivery_zones ?? [];
-  const photo = row.logo ?? row.cover_photo ?? LOCAL_FARM_IMAGES[row.id] ?? null;
+  const logo = storageUrl(row.logo) || fallbackFarmLogo(row.id);
+  const cover = storageUrl(row.cover_photo);
+  const photo = logo || cover || fallbackFarmCover();
   const next = nextDeliveryDate(zones, row.delivery_lead_time_days ?? 0);
 
   return {
@@ -168,11 +168,10 @@ function toLiveFarm(row) {
     operator: row.owner_names,
     sinceYear: row.year_founded,
     description: row.story ?? row.short_description ?? "",
-    heroUrl: row.cover_photo ?? photo,
-    logoUrl: row.logo ?? photo,
-    gallery: [...(row.farm_photos ?? [])]
-      .sort((a, b) => (a.position ?? 0) - (b.position ?? 0))
-      .map((p) => p.image),
+    heroUrl: cover || fallbackFarmCover(),
+    logoUrl: logo || photo,
+    // Optional farms.photos column (text[] of bucket filenames or URLs)
+    gallery: (row.photos ?? []).map((p) => storageUrl(p)).filter(Boolean),
     deliveryFee: zones[0]?.fee ?? null,
     deliveryMinimum: row.delivery_minimum,
     nextDelivery: next ? next.toLocaleDateString("en-CA") : null, // "YYYY-MM-DD"

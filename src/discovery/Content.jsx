@@ -1,3 +1,4 @@
+import { storageUrl } from "../lib/farmPhotos";
 import { Link } from "react-router-dom";
 import { preview } from "./catalog";
 import "./discovery.css";
@@ -24,11 +25,17 @@ export function CatalogState({ catalog, children }) {
   );
 }
 export function CutCard({ cut, featured }) {
+  const photoUrl = storageUrl(cut.photo_url, "produtcut-photos");
+
   return (
     <Link className="dc-card" to={"/shop/" + cut.id}>
       <div className="dc-photo">
-        {cut.photo_url ? (
-          <img src={cut.photo_url} alt="" />
+        {photoUrl ? (
+          <img
+            src={photoUrl}
+            alt={cut.name}
+            style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+          />
         ) : (
           "Photo unavailable"
         )}

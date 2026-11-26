@@ -8,7 +8,7 @@
  *
  * Data contract these tests assume (change the fake + fixtures if yours differs):
  *  - batches: id, farm_id, batch_code, animal, processing_date, status ('active'|'done'), created_at
- *  - cuts:    id, farm_id, batch_id, cow_part_id, name, total, sold, held, featured
+ *  - cuts:    id, farm_id, batch_id, cow_part_id, name, total, sold, held, is_featured
  *  - the batches query embeds cuts and each cut's part:  cuts ( *, cow_parts ( id, name ) )
  *  - live updates (PB21) come from a Supabase realtime channel on the `cuts` table
  *  - "View cuts" (PB26) navigates to /producer/inventory?batch=<batchId>&parts=<partId>,<partId>
@@ -82,7 +82,7 @@ const h = vi.hoisted(() => {
       for (const r of list) {
         r.id = state.nextId++
         r.created_at = r.created_at ?? new Date().toISOString()
-        if (q.table === 'cuts') r.featured = r.featured ?? false
+        if (q.table === 'cuts') r.is_featured = r.is_featured ?? false
         rows.push(r)
       }
       data = list
@@ -168,7 +168,7 @@ vi.mock('/src/lib/supabase.js', () => ({ supabase: h.supabase }))
 const FARM_ID = 1
 
 const cut = (id, batch_id, cow_part_id, name, total, sold, held) => ({
-  id, farm_id: FARM_ID, batch_id, cow_part_id, name, total, sold, held, featured: false,
+  id, farm_id: FARM_ID, batch_id, cow_part_id, name, total, sold, held, is_featured: false,
 })
 
 /*
@@ -449,7 +449,7 @@ describe('Slowest parts bar', () => {
     fireEvent.click(await screen.findByRole('button', { name: /feature both/i }))
 
     await waitFor(() => {
-      const featured = h.state.db.cuts.filter((c) => c.featured).map((c) => c.id).sort()
+      const featured = h.state.db.cuts.filter((c) => c.is_featured).map((c) => c.id).sort()
       expect(featured).toEqual([21, 22, 24]) // both chuck cuts + the shank cut, only in LF-1010
     })
   })
@@ -460,7 +460,7 @@ describe('Slowest parts bar', () => {
     fireEvent.click(await screen.findByRole('button', { name: /feature both/i }))
 
     expect(await screen.findByText(/something went wrong\. try again\./i)).toBeTruthy()
-    expect(h.state.db.cuts.some((c) => c.featured)).toBe(false)
+    expect(h.state.db.cuts.some((c) => c.is_featured)).toBe(false)
   })
 
   it('PB26: "View cuts" opens Inventory filtered to the two named parts in this batch', async () => {
