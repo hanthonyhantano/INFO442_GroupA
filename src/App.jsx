@@ -21,6 +21,7 @@ import Batches from './pages/producer/Batches'
 import Import from './pages/producer/Import'
 import FarmProfile from './pages/producer/FarmProfile'
 import { CartProvider, useCart } from "./cart/CartContext";
+import RequireProducer from './components/RequireProducer'
 import './App.css'
 
 function ShopperCartLayout() {
@@ -51,7 +52,7 @@ export default function App() {
         <Route path="/apply" element={<Apply />} />
       </Route>
       <Route element={<ShopperLayout />}><Route path="/sign-in" element={<SignIn />} /></Route>
-      <Route path="/producer" element={<ProducerLayout />}>
+      <Route path="/producer" element={<RequireProducer><ProducerLayout /></RequireProducer>}>
         <Route index element={<Navigate to="today" replace />} />
         <Route path="today" element={<Today />} />
         <Route path="orders" element={<Orders />} />
